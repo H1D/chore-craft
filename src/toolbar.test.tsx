@@ -37,16 +37,18 @@ describe('Toolbar render', () => {
     expect(html).toContain('placeholder="Kid name"');
   });
 
-  test('renders all six theme options with the active one selected', () => {
+  test('renders both active theme options with the active one selected', () => {
     const html = renderToStaticMarkup(
-      <Toolbar {...baseProps} theme="minecraft" />,
+      <Toolbar {...baseProps} theme="character-sheet" />,
     );
     for (const t of THEMES) {
       expect(html).toContain(`value="${t.value}"`);
       expect(html).toContain(t.label);
     }
     // selected="" attribute on the active option
-    expect(html).toMatch(/value="minecraft"\s+selected/);
+    expect(THEMES).toHaveLength(2);
+    expect(html).not.toContain('value="minecraft"');
+    expect(html).toMatch(/value="character-sheet"\s+selected/);
   });
 
   test('renders all three language options with the active one selected', () => {

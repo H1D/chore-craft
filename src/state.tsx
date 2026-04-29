@@ -12,13 +12,7 @@ import React from 'react';
 //     (debounced) and per-kid localStorage, and rehydrates on mount
 //     in priority order: hash → last-kid storage → defaults.
 
-export type Theme =
-  | 'quest-scroll'
-  | 'character-sheet'
-  | 'dungeon-map'
-  | 'minecraft'
-  | 'roblox'
-  | 'toca-boca';
+export type Theme = 'quest-scroll' | 'character-sheet';
 
 export type Lang = 'en' | 'ru' | 'nl';
 
@@ -68,18 +62,16 @@ const VALID_LANGS: ReadonlySet<Lang> = new Set<Lang>(['en', 'ru', 'nl']);
 const VALID_THEMES: ReadonlySet<Theme> = new Set<Theme>([
   'quest-scroll',
   'character-sheet',
-  'dungeon-map',
-  'minecraft',
-  'roblox',
-  'toca-boca',
 ]);
+const LEGACY_THEMES = new Set(['dungeon-map', 'minecraft', 'roblox', 'toca-boca']);
 
 // Numeric ranges mirror the UI clamps in EditableNumber (level + chore XP both
 // live in 1..99). decodeState/loadKidState are the trust boundary for hash
 // payloads and stored blobs — without these checks, a crafted URL or corrupted
 // localStorage entry could inject `level: 0.5` / `xp: -3`, which would render
 // once and then keep getting re-persisted until the user happens to edit that
-// field. Reject up front instead.
+// field. Reject invalid data up front and coerce disabled legacy themes to the
+// default active theme so old hashes/storage don't render broken variants.
 const LEVEL_MIN = 1;
 const LEVEL_MAX = 99;
 const XP_MIN = 1;
@@ -89,29 +81,48 @@ function isIntInRange(v: unknown, min: number, max: number): boolean {
   return typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
 }
 
-function isValidChoreState(v: unknown): v is ChoreState {
-  if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
+function normalizeTheme(v: unknown): Theme | null {
+  if (typeof v !== 'string') return null;
+  if (VALID_THEMES.has(v as Theme)) return v as Theme;
+  if (LEGACY_THEMES.has(v)) return 'quest-scroll';
+  return null;
+}
+
+function normalizeChoreState(v: unknown): ChoreState | null {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
   const o = v as Record<string, unknown>;
-  if (typeof o.kid !== 'string') return false;
-  if (!isIntInRange(o.level, LEVEL_MIN, LEVEL_MAX)) return false;
-  if (typeof o.levelName !== 'string') return false;
-  if (typeof o.classTitle !== 'string') return false;
-  if (typeof o.reward !== 'string') return false;
-  if (typeof o.lang !== 'string' || !VALID_LANGS.has(o.lang as Lang)) return false;
-  if (typeof o.theme !== 'string' || !VALID_THEMES.has(o.theme as Theme)) return false;
-  if (!Array.isArray(o.chores)) return false;
+  if (typeof o.kid !== 'string') return null;
+  if (!isIntInRange(o.level, LEVEL_MIN, LEVEL_MAX)) return null;
+  if (typeof o.levelName !== 'string') return null;
+  if (typeof o.classTitle !== 'string') return null;
+  if (typeof o.reward !== 'string') return null;
+  if (typeof o.lang !== 'string' || !VALID_LANGS.has(o.lang as Lang)) return null;
+  const theme = normalizeTheme(o.theme);
+  if (!theme) return null;
+  if (!Array.isArray(o.chores)) return null;
   // Cap matches the UI's add-button limit (CHORE_CAP). A crafted hash or
   // corrupted blob with thousands of entries would otherwise round-trip
   // through state and re-persist on every effect-side save.
-  if (o.chores.length > CHORE_CAP) return false;
+  if (o.chores.length > CHORE_CAP) return null;
+  const chores: Chore[] = [];
   for (const c of o.chores) {
-    if (!c || typeof c !== 'object') return false;
+    if (!c || typeof c !== 'object') return null;
     const ch = c as Record<string, unknown>;
-    if (typeof ch.name !== 'string') return false;
-    if (!isIntInRange(ch.xp, XP_MIN, XP_MAX)) return false;
-    if (typeof ch.on !== 'boolean') return false;
+    if (typeof ch.name !== 'string') return null;
+    if (!isIntInRange(ch.xp, XP_MIN, XP_MAX)) return null;
+    if (typeof ch.on !== 'boolean') return null;
+    chores.push({ name: ch.name, xp: ch.xp, on: ch.on });
   }
-  return true;
+  return {
+    kid: o.kid,
+    level: o.level,
+    levelName: o.levelName,
+    classTitle: o.classTitle,
+    reward: o.reward,
+    lang: o.lang as Lang,
+    theme,
+    chores,
+  };
 }
 
 export function decodeState(s: string): ChoreState | null {
@@ -122,7 +133,7 @@ export function decodeState(s: string): ChoreState | null {
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     const json = new TextDecoder().decode(bytes);
     const parsed = JSON.parse(json);
-    return isValidChoreState(parsed) ? parsed : null;
+    return normalizeChoreState(parsed);
   } catch {
     return null;
   }
@@ -145,7 +156,7 @@ export function loadKidState(name: string): ChoreState | null {
     const raw = ls.getItem(KID_PREFIX + name);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return isValidChoreState(parsed) ? parsed : null;
+    return normalizeChoreState(parsed);
   } catch {
     return null;
   }

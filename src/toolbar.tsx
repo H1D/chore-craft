@@ -11,10 +11,6 @@ import { I18N } from './i18n';
 export const THEMES: { value: Theme; label: string }[] = [
   { value: 'quest-scroll', label: 'Quest Scroll' },
   { value: 'character-sheet', label: 'Character Sheet' },
-  { value: 'dungeon-map', label: 'Dungeon Map' },
-  { value: 'minecraft', label: 'Minecraft' },
-  { value: 'roblox', label: 'Roblox' },
-  { value: 'toca-boca', label: 'Toca Boca' },
 ];
 
 export const LANGS: { value: Lang; label: string }[] = [

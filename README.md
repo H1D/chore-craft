@@ -1,19 +1,17 @@
 # Kids Tracking — RPG Chore & Learning Dashboard
 
-A printable, gamified chore and learning dashboard for kids. Six visual variants, three languages, edited inline in the browser, marker-friendly when printed.
+A printable, gamified chore and learning dashboard for kids. Two active visual themes, three languages, edited inline in the browser, marker-friendly when printed.
 
 ## What's Inside
 
-Six A4 portrait dashboards, each 794 x 1123 px and printable on a single sheet. The app shows one of them at a time at full size; the toolbar above the sheet picks which:
+Two active A4 portrait dashboards, each 794 x 1123 px and printable on a single sheet. The app shows one of them at a time at full size; the toolbar above the sheet picks which:
 
 | File | Style | Vibe |
 |---|---|---|
 | `src/v1-quest-scroll.tsx` | A · Quest Scroll | Aged parchment, ink, wax seal |
 | `src/v2-character-sheet.tsx` | B · Character Sheet | D&D-style stat block |
-| `src/v3-dungeon-map.tsx` | C · Dungeon Map | Tabletop dungeon grid + rooms |
-| `src/v4-minecraft.tsx` | D · Minecraft | Pixel blocks, inventory grid, HUD |
-| `src/v5-roblox.tsx` | E · Roblox | Chunky avatar, thick borders, coin XP |
-| `src/v6-toca-boca.tsx` | F · Toca Boca | Soft pastels, stickers, cute character |
+
+Legacy source files for the other prototype variants remain in `src/`, but they are not registered in the toolbar while their layouts are unstable.
 
 All variants share the same data model: hero name, level, daily quests with XP, reward. Bonus quest slots stay blank by design — kids fill them in by hand.
 
@@ -52,10 +50,7 @@ src/i18n.tsx               -> EN / RU / NL strings
 src/ornaments.tsx          -> shared decorative SVG
 src/v1-quest-scroll.tsx    -> variant A
 src/v2-character-sheet.tsx -> variant B
-src/v3-dungeon-map.tsx     -> variant C
-src/v4-minecraft.tsx       -> variant D
-src/v5-roblox.tsx          -> variant E
-src/v6-toca-boca.tsx       -> variant F
+src/v3-*.tsx through v6-*.tsx -> disabled prototype variants
 scripts/build.ts           -> Bun build script (single bundle)
 dist/                      -> generated static site, ignored by git
 ```

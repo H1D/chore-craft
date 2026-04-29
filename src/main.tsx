@@ -4,10 +4,6 @@ import './i18n';
 import './ornaments';
 import { QuestScroll } from './v1-quest-scroll';
 import { CharacterSheet } from './v2-character-sheet';
-import { DungeonMap } from './v3-dungeon-map';
-import { Minecraft } from './v4-minecraft';
-import { Roblox } from './v5-roblox';
-import { TocaBoca } from './v6-toca-boca';
 import { Toolbar } from './toolbar';
 import {
   CHORE_CAP,
@@ -22,10 +18,6 @@ import {
 const THEME_COMPONENTS: Record<Theme, React.ComponentType<any>> = {
   'quest-scroll': QuestScroll,
   'character-sheet': CharacterSheet,
-  'dungeon-map': DungeonMap,
-  minecraft: Minecraft,
-  roblox: Roblox,
-  'toca-boca': TocaBoca,
 };
 
 function App() {

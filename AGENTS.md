@@ -43,7 +43,7 @@ Languages supported: English, Russian, Dutch. All UI strings live in `src/i18n.t
 - `src/toolbar.tsx`: top toolbar (kid `<select>` with an "Add new kid..." modal, theme select, language select, Print button). Hidden via `@media print`.
 - `src/state.tsx`: `ChoreState` type, URL-safe base64 codec (`encodeState` / `decodeState`), per-kid `localStorage` adapter (`loadKidState` / `saveKidState` / `listKids` / `loadLastKid`), and the `useChoreState` hook (URL hash mirror debounced 200ms, fallback to last-kid storage, then to defaults).
 - `src/inline.tsx`: `InlineText`, `InlineNumber`, `InlineAddRow`, `InlineRemoveButton` primitives. The `.cc-edit` style block is injected once via `useEffect`; the `.cc-edit-ui` class hides + / × buttons in print.
-- Whenever a new variant is added, register it in `src/main.tsx`'s theme map.
+- Only Quest Scroll and Character Sheet are active themes. Disabled prototype variants may remain in `src/`, but do not register them in `src/main.tsx` or `src/toolbar.tsx` until their layouts are fixed.
 
 ## File Map
 
@@ -56,8 +56,8 @@ src/inline.tsx             -> inline-edit primitives
 src/i18n.tsx               -> EN / RU / NL strings
 src/ornaments.tsx          -> shared decorative SVG
 src/v1-quest-scroll.tsx    -> variant A
-...
-src/v6-toca-boca.tsx       -> variant F
+src/v2-character-sheet.tsx -> variant B
+src/v3-*.tsx through v6-*.tsx -> disabled prototype variants
 src/state.test.ts          -> codec + storage tests
 src/inline.test.tsx        -> commit-helper + render smoke tests
 src/toolbar.test.tsx       -> toolbar SSR shape test
@@ -67,7 +67,7 @@ scripts/build.ts           -> Bun build script
 
 ## Layout Traps
 
-- Quest tables in v4 Minecraft and v5 Roblox must align header columns with row columns exactly:
+- Disabled quest tables in v4 Minecraft and v5 Roblox must align header columns with row columns exactly before those themes are re-enabled:
   - same `gridTemplateColumns` on header and rows
   - `min-width: 0` plus `text-overflow: ellipsis` on the quest-name cell so long names do not blow out column 1
   - no `aspect-ratio` on grid cells, because it forces square sizing that fights the columns
@@ -80,12 +80,8 @@ scripts/build.ts           -> Bun build script
 |---|---|---|---|
 | Quest Scroll | Parchment + ink `#7a3a2a`, `#f5e6c8` | Cinzel + Crimson Pro | Hand-drawn, ornamental |
 | Character Sheet | Cream + ink + ruled lines | Cinzel + Crimson Pro | D&D form fields |
-| Dungeon Map | Aged map, warm tan | Crimson Pro | Hand-inked tiles |
-| Minecraft | Sky blue + dirt browns | Press Start 2P + JetBrains Mono | 3px hard edges + offset shadow |
-| Roblox | Bright primary red/blue/yellow | Nunito 800-900 | 4px black border + 6px offset shadow |
-| Toca Boca | Pastels `#ffadc6`, `#ffe17e`, etc. | Baloo 2 | 3px brown border + 5px offset shadow |
 
-Do not mix these. A pastel sticker does not go on the Minecraft sheet.
+Do not mix these. Each theme keeps its own palette, typography, and border style.
 
 ## Inline Editing
 

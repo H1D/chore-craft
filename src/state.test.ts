@@ -111,6 +111,13 @@ describe('codec', () => {
     expect(decodeState(encodeState({ ...sampleState(), chores: [{ name: 'x' }] } as any))).toBeNull();
   });
 
+  test('coerces disabled legacy themes to quest-scroll when loading saved data', () => {
+    const decoded = decodeState(encodeState({ ...sampleState(), theme: 'minecraft' } as any));
+    expect(decoded).not.toBeNull();
+    expect(decoded!.theme).toBe('quest-scroll');
+    expect(decoded!.kid).toBe('Alex');
+  });
+
   test('rejects numeric fields outside the UI clamp range (level/xp must be int 1..99)', () => {
     // Without this, a crafted URL hash or corrupted localStorage entry could
     // inject impossible values and have them re-persisted until the user
@@ -607,10 +614,10 @@ describe('applyKidSwitch', () => {
   });
 
   test('seeds defaults for an unknown new kid, keeping the parent-chosen theme', () => {
-    const prev = sampleState({ kid: 'Alex', theme: 'minecraft', lang: 'ru' });
+    const prev = sampleState({ kid: 'Alex', theme: 'character-sheet', lang: 'ru' });
     const next = applyKidSwitch(prev, 'Newcomer');
     expect(next.kid).toBe('Newcomer');
-    expect(next.theme).toBe('minecraft');
+    expect(next.theme).toBe('character-sheet');
     expect(next.lang).toBe('ru');
     expect(next.reward).toBe('');
     expect(next.chores.length).toBeGreaterThan(0);
