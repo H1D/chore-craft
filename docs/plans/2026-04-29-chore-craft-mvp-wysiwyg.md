@@ -56,14 +56,14 @@ Convert the POC (Figma-style canvas with 6 variants + Tweaks side panel) into a 
 - Create: `src/inline.tsx`
 - Create: `src/inline.test.tsx` (smoke test only — render + dispatch)
 
-- [ ] `InlineText({ value, onChange, style })` — `contentEditable` span; commits on blur and on Enter (preventDefault); strips newlines on paste; preserves print-correct styling
-- [ ] `InlineNumber({ value, min, max, onChange, style })` — same as InlineText but parses integer on commit, clamps, reverts on bad input
-- [ ] `InlineAddRow({ onAdd, label })` — small `+` button rendered inside a row; hidden via `@media print`
-- [ ] `InlineRemoveButton({ onRemove })` — small `×` button at row start; hidden via `@media print`
-- [ ] Inject one `<style>` block via `useEffect` once: `.cc-edit{outline:none;border-radius:2px} .cc-edit:focus{box-shadow:0 0 0 1.5px #c96442;background:#fff} @media print{.cc-edit-ui{display:none!important}}`
-- [ ] Smoke test: rendering each primitive into JSDOM, firing input/blur, asserting onChange called with expected value
-- [ ] Run `bun test` — all suites pass
-- [ ] Run `bun run build` — must succeed
+- [x] `InlineText({ value, onChange, style })` — `contentEditable` span; commits on blur and on Enter (preventDefault); strips newlines on paste; preserves print-correct styling
+- [x] `InlineNumber({ value, min, max, onChange, style })` — same as InlineText but parses integer on commit, clamps, reverts on bad input
+- [x] `InlineAddRow({ onAdd, label })` — small `+` button rendered inside a row; hidden via `@media print`
+- [x] `InlineRemoveButton({ onRemove })` — small `×` button at row start; hidden via `@media print`
+- [x] Inject one `<style>` block via `useEffect` once: `.cc-edit{outline:none;border-radius:2px} .cc-edit:focus{box-shadow:0 0 0 1.5px #c96442;background:#fff} @media print{.cc-edit-ui{display:none!important}}`
+- [x] Smoke test: rendering each primitive (commit logic via pure helpers + structure via `react-dom/server`; project has no JSDOM dep so live event dispatch is covered by `commitTextValue` / `commitNumberValue` unit tests)
+- [x] Run `bun test` — all suites pass
+- [x] Run `bun run build` — must succeed
 
 ### Task 3: Wire inline editing into all six variants
 
