@@ -110,6 +110,37 @@ describe('codec', () => {
     expect(decodeState(encodeState({ ...sampleState(), chores: 'nope' } as any))).toBeNull();
     expect(decodeState(encodeState({ ...sampleState(), chores: [{ name: 'x' }] } as any))).toBeNull();
   });
+
+  test('rejects numeric fields outside the UI clamp range (level/xp must be int 1..99)', () => {
+    // Without this, a crafted URL hash or corrupted localStorage entry could
+    // inject impossible values and have them re-persisted until the user
+    // happens to edit that specific field. Match the EditableNumber clamps.
+    expect(decodeState(encodeState({ ...sampleState(), level: 0 }))).toBeNull();
+    expect(decodeState(encodeState({ ...sampleState(), level: 100 }))).toBeNull();
+    expect(decodeState(encodeState({ ...sampleState(), level: -3 }))).toBeNull();
+    expect(decodeState(encodeState({ ...sampleState(), level: 0.5 }))).toBeNull();
+    expect(decodeState(encodeState({ ...sampleState(), level: NaN } as any))).toBeNull();
+    expect(
+      decodeState(
+        encodeState({ ...sampleState(), chores: [{ name: 'x', xp: 0, on: true }] }),
+      ),
+    ).toBeNull();
+    expect(
+      decodeState(
+        encodeState({ ...sampleState(), chores: [{ name: 'x', xp: 100, on: true }] }),
+      ),
+    ).toBeNull();
+    expect(
+      decodeState(
+        encodeState({ ...sampleState(), chores: [{ name: 'x', xp: -3, on: true }] }),
+      ),
+    ).toBeNull();
+    expect(
+      decodeState(
+        encodeState({ ...sampleState(), chores: [{ name: 'x', xp: 1.5, on: true }] }),
+      ),
+    ).toBeNull();
+  });
 });
 
 describe('kid storage', () => {
@@ -228,21 +259,277 @@ describe('renameKid', () => {
     expect(next.level).toBe(prev.level);
   });
 
-  test('does not seed defaults or load saved state for the new name', () => {
+  test('refuses rename when target name already has saved state (no clobber)', () => {
+    // Mira's saved state must not be overwritten by an inline rename of Alex.
     saveKidState('Mira', sampleState({ kid: 'Mira', reward: 'Frietjes' }));
     const prev = sampleState({ kid: 'Alex', reward: 'Pillow fort' });
     const next = renameKid(prev, 'Mira');
-    // unlike applyKidSwitch, renameKid does not load Mira's saved reward
-    expect(next.reward).toBe('Pillow fort');
-    expect(next.kid).toBe('Mira');
+    // Refused: returns prev unchanged so the storage effect keeps writing
+    // under 'Alex', preserving both kids' data.
+    expect(next).toBe(prev);
+    expect(loadKidState('Mira')!.reward).toBe('Frietjes');
   });
 
-  test('does not write to localStorage as a side effect', () => {
-    const prev = sampleState({ kid: 'Alex' });
-    renameKid(prev, 'Bob');
-    // pure helper — storage writes happen only through the useChoreState effect
+  test('atomically writes the new key before removing the old one', () => {
+    // The storage swap happens here (not in a post-render effect) so an
+    // unload/crash between the state change and the next React commit
+    // can't lose the kid's data.
+    saveKidState('Alex', sampleState({ kid: 'Alex', reward: 'Pillow fort' }));
+    const prev = sampleState({ kid: 'Alex', reward: 'Pillow fort' });
+    const next = renameKid(prev, 'Bob');
+    expect(next.kid).toBe('Bob');
     expect(loadKidState('Alex')).toBeNull();
+    const moved = loadKidState('Bob');
+    expect(moved).not.toBeNull();
+    expect(moved!.kid).toBe('Bob');
+    expect(moved!.reward).toBe('Pillow fort');
+  });
+
+  test('updates lastKid pointer when migrating storage', () => {
+    // Without this, an unload/crash after the key move but before the
+    // useChoreState effect runs would leave readInitial() pointing at the
+    // now-deleted old name, falling through to defaults.
+    saveKidState('Alex', sampleState({ kid: 'Alex', reward: 'Pillow fort' }));
+    saveLastKid('Alex');
+    const prev = sampleState({ kid: 'Alex', reward: 'Pillow fort' });
+    renameKid(prev, 'Bob');
+    expect(loadLastKid()).toBe('Bob');
+  });
+
+  test('does not touch lastKid when migration bails on quota error', () => {
+    // Quota failure leaves the old key intact, so the lastKid pointer must
+    // also stay on the old name — flipping it to the new name would point
+    // at a missing entry on next reload.
+    saveKidState('Alex', sampleState({ kid: 'Alex' }));
+    saveLastKid('Alex');
+    const inner = (globalThis as any).localStorage as MemoryStorage;
+    const trapped: Storage = {
+      get length() {
+        return inner.length;
+      },
+      key: (i: number) => inner.key(i),
+      getItem: (k: string) => inner.getItem(k),
+      setItem: (k: string, v: string) => {
+        if (k === KID_PREFIX + 'Bob') throw new Error('QuotaExceeded');
+        inner.setItem(k, v);
+      },
+      removeItem: (k: string) => inner.removeItem(k),
+      clear: () => inner.clear(),
+    };
+    (globalThis as any).localStorage = trapped;
+    try {
+      renameKid(sampleState({ kid: 'Alex' }), 'Bob');
+    } finally {
+      (globalThis as any).localStorage = inner;
+    }
+    expect(loadLastKid()).toBe('Alex');
+  });
+
+  test('rolls back when the lastKid pointer write fails after the new key was saved', () => {
+    // Storage accepts the new kid key but rejects the lastKid pointer update
+    // (quota race / transient failure between the two setItem calls). Without
+    // a rollback, removeKidState would still delete the old key while lastKid
+    // points at the now-missing old name, and reload falls through to defaults.
+    saveKidState('Alex', sampleState({ kid: 'Alex', reward: 'Pillow fort' }));
+    saveLastKid('Alex');
+    const inner = (globalThis as any).localStorage as MemoryStorage;
+    const trapped: Storage = {
+      get length() {
+        return inner.length;
+      },
+      key: (i: number) => inner.key(i),
+      getItem: (k: string) => inner.getItem(k),
+      setItem: (k: string, v: string) => {
+        if (k === LAST_KID_KEY && v === 'Bob') throw new Error('QuotaExceeded');
+        inner.setItem(k, v);
+      },
+      removeItem: (k: string) => inner.removeItem(k),
+      clear: () => inner.clear(),
+    };
+    (globalThis as any).localStorage = trapped;
+    try {
+      const prev = sampleState({ kid: 'Alex', reward: 'Pillow fort' });
+      const next = renameKid(prev, 'Bob');
+      expect(next).toBe(prev);
+    } finally {
+      (globalThis as any).localStorage = inner;
+    }
+    // Old key + lastKid intact; orphan new key cleaned up so a retry isn't
+    // blocked by the "target already has saved state" guard.
+    expect(loadKidState('Alex')).not.toBeNull();
+    expect(loadKidState('Alex')!.reward).toBe('Pillow fort');
     expect(loadKidState('Bob')).toBeNull();
+    expect(loadLastKid()).toBe('Alex');
+  });
+
+  test('refuses rename and preserves data when storing the new key fails', () => {
+    // Quota exceeded / private-mode storage / serialization failure must NOT
+    // trigger removeKidState on the old key — that would silently destroy the
+    // kid's data while the rename is also rejected at the React level.
+    saveKidState('Alex', sampleState({ kid: 'Alex', reward: 'Pillow fort' }));
+    const inner = (globalThis as any).localStorage as MemoryStorage;
+    const trapped: Storage = {
+      get length() {
+        return inner.length;
+      },
+      key: (i: number) => inner.key(i),
+      getItem: (k: string) => inner.getItem(k),
+      setItem: (k: string, v: string) => {
+        if (k === KID_PREFIX + 'Bob') throw new Error('QuotaExceeded');
+        inner.setItem(k, v);
+      },
+      removeItem: (k: string) => inner.removeItem(k),
+      clear: () => inner.clear(),
+    };
+    (globalThis as any).localStorage = trapped;
+    try {
+      const prev = sampleState({ kid: 'Alex', reward: 'Pillow fort' });
+      const next = renameKid(prev, 'Bob');
+      expect(next).toBe(prev);
+    } finally {
+      (globalThis as any).localStorage = inner;
+    }
+    // Old key intact, new key never written → no data lost.
+    expect(loadKidState('Alex')).not.toBeNull();
+    expect(loadKidState('Alex')!.reward).toBe('Pillow fort');
+    expect(loadKidState('Bob')).toBeNull();
+  });
+
+  test('rolls back when removing the old key fails after migration committed', () => {
+    // Migration succeeded (new key written, lastKid pointer updated) but the
+    // cleanup delete of the old key fails (security exception, extension,
+    // etc.). Without rollback the orphan entry under prev.kid would surface
+    // as stale data the next time the user switches back via the toolbar.
+    saveKidState('Alex', sampleState({ kid: 'Alex', reward: 'Pillow fort' }));
+    saveLastKid('Alex');
+    const inner = (globalThis as any).localStorage as MemoryStorage;
+    const trapped: Storage = {
+      get length() {
+        return inner.length;
+      },
+      key: (i: number) => inner.key(i),
+      getItem: (k: string) => inner.getItem(k),
+      setItem: (k: string, v: string) => inner.setItem(k, v),
+      removeItem: (k: string) => {
+        if (k === KID_PREFIX + 'Alex') throw new Error('SecurityError');
+        inner.removeItem(k);
+      },
+      clear: () => inner.clear(),
+    };
+    (globalThis as any).localStorage = trapped;
+    try {
+      const prev = sampleState({ kid: 'Alex', reward: 'Pillow fort' });
+      const next = renameKid(prev, 'Bob');
+      expect(next).toBe(prev);
+    } finally {
+      (globalThis as any).localStorage = inner;
+    }
+    // Old key + lastKid intact so applyKidSwitch back to Alex still works.
+    expect(loadKidState('Alex')).not.toBeNull();
+    expect(loadKidState('Alex')!.reward).toBe('Pillow fort');
+    expect(loadKidState('Bob')).toBeNull();
+    expect(loadLastKid()).toBe('Alex');
+  });
+
+  test('rollback resyncs storage with the in-memory payload (no stale data on reload)', () => {
+    // Memory may be ahead of storage when a previous effect-side save was
+    // rejected and swallowed (saveKidState catches and returns false). Returning
+    // prev is a same-reference no-op for React, so the storage effect won't fire
+    // again and the divergence would stick until the next edit. Each rollback
+    // path must resync storage to prev before returning.
+    saveKidState('Alex', sampleState({ kid: 'Alex', reward: 'OLD' }));
+    saveLastKid('Alex');
+    const inner = (globalThis as any).localStorage as MemoryStorage;
+    const trapped: Storage = {
+      get length() {
+        return inner.length;
+      },
+      key: (i: number) => inner.key(i),
+      getItem: (k: string) => inner.getItem(k),
+      setItem: (k: string, v: string) => {
+        if (k === LAST_KID_KEY && v === 'Bob') throw new Error('QuotaExceeded');
+        inner.setItem(k, v);
+      },
+      removeItem: (k: string) => inner.removeItem(k),
+      clear: () => inner.clear(),
+    };
+    (globalThis as any).localStorage = trapped;
+    try {
+      const prev = sampleState({ kid: 'Alex', reward: 'NEW' });
+      const next = renameKid(prev, 'Bob');
+      expect(next).toBe(prev);
+    } finally {
+      (globalThis as any).localStorage = inner;
+    }
+    // Storage now matches the in-memory payload — reload won't surface stale OLD.
+    expect(loadKidState('Alex')!.reward).toBe('NEW');
+    expect(loadKidState('Bob')).toBeNull();
+    expect(loadLastKid()).toBe('Alex');
+  });
+
+  test('rollback after lastKid failure removes the orphan new key', () => {
+    // Stricter version of the earlier rollback test: assert that the orphan
+    // 'Bob' key is actually gone, not just that loadKidState reports null.
+    // If removeKidState swallows failures the next renameKid(_, 'Bob') would
+    // be blocked by the loadKidState guard.
+    saveKidState('Alex', sampleState({ kid: 'Alex', reward: 'Pillow fort' }));
+    saveLastKid('Alex');
+    const inner = (globalThis as any).localStorage as MemoryStorage;
+    const trapped: Storage = {
+      get length() {
+        return inner.length;
+      },
+      key: (i: number) => inner.key(i),
+      getItem: (k: string) => inner.getItem(k),
+      setItem: (k: string, v: string) => {
+        if (k === LAST_KID_KEY && v === 'Bob') throw new Error('QuotaExceeded');
+        inner.setItem(k, v);
+      },
+      removeItem: (k: string) => inner.removeItem(k),
+      clear: () => inner.clear(),
+    };
+    (globalThis as any).localStorage = trapped;
+    try {
+      renameKid(sampleState({ kid: 'Alex', reward: 'Pillow fort' }), 'Bob');
+    } finally {
+      (globalThis as any).localStorage = inner;
+    }
+    // Retry must not be blocked by the orphan-target guard.
+    const retry = renameKid(sampleState({ kid: 'Alex', reward: 'Pillow fort' }), 'Bob');
+    expect(retry.kid).toBe('Bob');
+  });
+
+  test('does not write a new entry when no old entry existed', () => {
+    // Without a previous kid name there's nothing to migrate; the storage
+    // effect will write under the new key on next render.
+    const prev = sampleState({ kid: '' });
+    const next = renameKid(prev, 'Bob');
+    expect(next.kid).toBe('Bob');
+    expect(loadKidState('Bob')).toBeNull();
+  });
+
+  test('renames in memory when localStorage is unavailable', () => {
+    // Private-mode browsers / SSR / disabled storage: there is no persisted
+    // data to protect, so the rename must proceed in memory rather than
+    // rolling back. Other inline edits already degrade this way.
+    delete (globalThis as any).localStorage;
+    try {
+      const prev = sampleState({ kid: 'Alex', reward: 'Pillow fort' });
+      const next = renameKid(prev, 'Bob');
+      expect(next.kid).toBe('Bob');
+      expect(next.reward).toBe('Pillow fort');
+    } finally {
+      (globalThis as any).localStorage = new MemoryStorage();
+    }
+  });
+
+  test('renames in memory when old kid has no saved entry yet', () => {
+    // The kid name was just typed — never persisted. There is nothing under
+    // the old key to migrate, so the rename must not roll back.
+    const prev = sampleState({ kid: 'Alex' });
+    expect(loadKidState('Alex')).toBeNull();
+    const next = renameKid(prev, 'Bob');
+    expect(next.kid).toBe('Bob');
   });
 
   test('trims surrounding whitespace before applying', () => {
@@ -287,5 +574,51 @@ describe('applyKidSwitch', () => {
     const prev = sampleState({ kid: 'Alex' });
     const next = applyKidSwitch(prev, '  Mira  ');
     expect(next.kid).toBe('Mira');
+  });
+
+  test('refuses switch when persisting prev kid fails and prev had saved data', () => {
+    // If the latest in-memory state for the old kid can't be persisted (quota,
+    // private mode after a write succeeded once, etc.) we must not silently
+    // switch — those edits would vanish, leaving stale data under the old key.
+    saveKidState('Alex', sampleState({ kid: 'Alex', reward: 'Stale fort' }));
+    const inner = (globalThis as any).localStorage as MemoryStorage;
+    const trapped: Storage = {
+      get length() {
+        return inner.length;
+      },
+      key: (i: number) => inner.key(i),
+      getItem: (k: string) => inner.getItem(k),
+      setItem: (k: string, v: string) => {
+        if (k === KID_PREFIX + 'Alex') throw new Error('QuotaExceeded');
+        inner.setItem(k, v);
+      },
+      removeItem: (k: string) => inner.removeItem(k),
+      clear: () => inner.clear(),
+    };
+    (globalThis as any).localStorage = trapped;
+    try {
+      const prev = sampleState({ kid: 'Alex', reward: 'Latest unsaved fort' });
+      const next = applyKidSwitch(prev, 'Mira');
+      expect(next).toBe(prev);
+    } finally {
+      (globalThis as any).localStorage = inner;
+    }
+    // Old saved entry left intact; user stays on Alex and can retry / clean up.
+    expect(loadKidState('Alex')!.reward).toBe('Stale fort');
+    expect(loadKidState('Mira')).toBeNull();
+  });
+
+  test('switches in memory when prev kid has no saved entry yet (private mode / brand new)', () => {
+    // No persisted data to protect → proceed even if the in-memory save would
+    // be a no-op. Mirrors renameKid's "renames in memory when storage
+    // unavailable" branch.
+    delete (globalThis as any).localStorage;
+    try {
+      const prev = sampleState({ kid: 'Alex', reward: 'Pillow fort' });
+      const next = applyKidSwitch(prev, 'Mira');
+      expect(next.kid).toBe('Mira');
+    } finally {
+      (globalThis as any).localStorage = new MemoryStorage();
+    }
   });
 });

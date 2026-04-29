@@ -1,4 +1,5 @@
 import React from 'react';
+import { flushSync } from 'react-dom';
 
 // inline.tsx
 // WYSIWYG primitives for the printable sheet.
@@ -83,7 +84,16 @@ export function InlineText({ value, onChange, style, ariaLabel }: InlineTextProp
   useInjectInlineStyles();
   const ref = React.useRef<HTMLSpanElement>(null);
   const [initial] = React.useState<string>(value);
+  // valueRef mirrors the live `value` prop so commit() can read the
+  // post-dispatch resolved value synchronously after flushSync (acceptance
+  // re-renders us with new value; rejection bails React out of re-rendering).
+  const valueRef = React.useRef<string>(value);
+  valueRef.current = value;
 
+  // External value changes (e.g. kid switch from the toolbar) sync the DOM.
+  // This effect is NOT the rollback path — commit() handles rollback itself,
+  // synchronously, so window.print() never reads the stale typed-but-rejected
+  // text from the contentEditable.
   React.useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -94,8 +104,15 @@ export function InlineText({ value, onChange, style, ariaLabel }: InlineTextProp
   const commit = () => {
     const el = ref.current;
     if (!el) return;
-    const next = commitTextValue(el.textContent ?? '', value, onChange);
-    if (el.textContent !== next) el.textContent = next;
+    // flushSync forces the parent's setState to commit before commit() returns,
+    // so any sibling sync work (most importantly window.print() in a Print
+    // button click) sees the resolved DOM, not the user's typed text. After
+    // flushSync, valueRef.current holds the new value on acceptance and the
+    // old value on rejection (renameKid conflict, etc.).
+    flushSync(() => {
+      commitTextValue(el.textContent ?? '', value, onChange);
+    });
+    if (el.textContent !== valueRef.current) el.textContent = valueRef.current;
   };
 
   return (
@@ -148,6 +165,11 @@ export function InlineNumber({ value, min, max, onChange, style, ariaLabel }: In
   useInjectInlineStyles();
   const ref = React.useRef<HTMLSpanElement>(null);
   const [initial] = React.useState<string>(String(value));
+  // See InlineText: ref-mirrored value lets commit() read the resolved value
+  // synchronously after flushSync, so the rollback (invalid input → revert
+  // to current) lands before any sibling click handler runs window.print().
+  const valueRef = React.useRef<number>(value);
+  valueRef.current = value;
 
   React.useEffect(() => {
     const el = ref.current;
@@ -160,8 +182,11 @@ export function InlineNumber({ value, min, max, onChange, style, ariaLabel }: In
   const commit = () => {
     const el = ref.current;
     if (!el) return;
-    const next = commitNumberValue(el.textContent ?? '', value, min, max, onChange);
-    el.textContent = String(next);
+    flushSync(() => {
+      commitNumberValue(el.textContent ?? '', value, min, max, onChange);
+    });
+    const want = String(valueRef.current);
+    if (el.textContent !== want) el.textContent = want;
   };
 
   return (

@@ -50,7 +50,7 @@ export interface ToolbarProps {
   theme: Theme;
   lang: Lang;
   knownKids: string[];
-  onKidCommit: (next: string) => void;
+  onKidCommit: (next: string) => boolean;
   onThemeChange: (next: Theme) => void;
   onLangChange: (next: Lang) => void;
   onPrint: () => void;
@@ -78,11 +78,15 @@ export function Toolbar({
 
   const commit = () => {
     const trimmed = draft.trim();
-    if (!trimmed) {
+    if (!trimmed || trimmed === kid) {
       setDraft(kid);
       return;
     }
-    if (trimmed !== kid) onKidCommit(trimmed);
+    // Parent may reject (quota fail, blank, target conflict). On rejection
+    // kid prop never changes, so the [kid] resync effect won't fire — we
+    // must reset draft manually so the input doesn't show a phantom name.
+    const accepted = onKidCommit(trimmed);
+    if (!accepted) setDraft(kid);
   };
 
   return (

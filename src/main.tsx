@@ -32,6 +32,15 @@ function App() {
   const initialDefaults = React.useMemo(() => defaultStateForLang('en'), []);
   const [state, setState] = useChoreState(initialDefaults);
 
+  // stateRef gives event handlers access to the latest state without forcing
+  // the `edit` object to re-build every render. Used so renameKid / applyKidSwitch
+  // (which touch localStorage) run *once* in an event handler instead of inside
+  // a setState updater, which React may double-invoke or replay.
+  const stateRef = React.useRef(state);
+  React.useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
   const ThemeComp = THEME_COMPONENTS[state.theme] ?? QuestScroll;
 
   // The variants share a single `data` shape inherited from the POC; only the
@@ -52,7 +61,11 @@ function App() {
 
   const edit = React.useMemo(
     () => ({
-      setHeroName: (v: string) => setState((prev) => renameKid(prev, v)),
+      setHeroName: (v: string) => {
+        const cur = stateRef.current;
+        const next = renameKid(cur, v);
+        if (next !== cur) setState(next);
+      },
       setLevel: (v: number) => setState((prev) => ({ ...prev, level: v })),
       setLevelName: (v: string) => setState((prev) => ({ ...prev, levelName: v })),
       setClassTitle: (v: string) => setState((prev) => ({ ...prev, classTitle: v })),
@@ -83,7 +96,17 @@ function App() {
   );
 
   // Re-read kid list whenever current kid changes (storage may have grown).
-  const knownKids = React.useMemo(() => listKids(), [state.kid]);
+  // The persistence effect runs after render, so listKids() can lag by one
+  // render after a switch/rename. Union the current kid in so the toolbar
+  // datalist always reflects who's active, even pre-flush.
+  const knownKids = React.useMemo(() => {
+    const stored = listKids();
+    if (state.kid && !stored.includes(state.kid)) {
+      stored.push(state.kid);
+      stored.sort();
+    }
+    return stored;
+  }, [state.kid]);
 
   return (
     <React.Fragment>
@@ -92,7 +115,13 @@ function App() {
         theme={state.theme}
         lang={state.lang}
         knownKids={knownKids}
-        onKidCommit={(v) => setState((prev) => applyKidSwitch(prev, v))}
+        onKidCommit={(v) => {
+          const cur = stateRef.current;
+          const next = applyKidSwitch(cur, v);
+          if (next === cur) return false;
+          setState(next);
+          return true;
+        }}
         onThemeChange={(v) => setState((prev) => ({ ...prev, theme: v }))}
         onLangChange={(v) => setState((prev) => ({ ...prev, lang: v }))}
         onPrint={() => {

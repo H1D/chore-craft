@@ -74,11 +74,26 @@ const VALID_THEMES: ReadonlySet<Theme> = new Set<Theme>([
   'toca-boca',
 ]);
 
+// Numeric ranges mirror the UI clamps in EditableNumber (level + chore XP both
+// live in 1..99). decodeState/loadKidState are the trust boundary for hash
+// payloads and stored blobs — without these checks, a crafted URL or corrupted
+// localStorage entry could inject `level: 0.5` / `xp: -3`, which would render
+// once and then keep getting re-persisted until the user happens to edit that
+// field. Reject up front instead.
+const LEVEL_MIN = 1;
+const LEVEL_MAX = 99;
+const XP_MIN = 1;
+const XP_MAX = 99;
+
+function isIntInRange(v: unknown, min: number, max: number): boolean {
+  return typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
+}
+
 function isValidChoreState(v: unknown): v is ChoreState {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
   const o = v as Record<string, unknown>;
   if (typeof o.kid !== 'string') return false;
-  if (typeof o.level !== 'number' || !Number.isFinite(o.level)) return false;
+  if (!isIntInRange(o.level, LEVEL_MIN, LEVEL_MAX)) return false;
   if (typeof o.levelName !== 'string') return false;
   if (typeof o.classTitle !== 'string') return false;
   if (typeof o.reward !== 'string') return false;
@@ -89,7 +104,7 @@ function isValidChoreState(v: unknown): v is ChoreState {
     if (!c || typeof c !== 'object') return false;
     const ch = c as Record<string, unknown>;
     if (typeof ch.name !== 'string') return false;
-    if (typeof ch.xp !== 'number' || !Number.isFinite(ch.xp)) return false;
+    if (!isIntInRange(ch.xp, XP_MIN, XP_MAX)) return false;
     if (typeof ch.on !== 'boolean') return false;
   }
   return true;
@@ -132,13 +147,33 @@ export function loadKidState(name: string): ChoreState | null {
   }
 }
 
-export function saveKidState(name: string, state: ChoreState): void {
+// Returns true on a confirmed write so callers that need to chain a
+// destructive step (renameKid → removeKidState) can bail when the write
+// fails (quota / private mode / serialization). Other callers ignore it.
+export function saveKidState(name: string, state: ChoreState): boolean {
   const ls = getStorage();
-  if (!ls || !name) return;
+  if (!ls || !name) return false;
   try {
     ls.setItem(KID_PREFIX + name, JSON.stringify(state));
+    return true;
   } catch {
-    /* quota or serialization error — drop silently */
+    return false;
+  }
+}
+
+// Returns true on a confirmed delete (or a no-op when storage is unavailable
+// or the name is blank, which is what callers want anyway). renameKid uses
+// the boolean to attempt rollback if cleanup of the old key fails after the
+// migration was committed — without this, an orphan key under the previous
+// name would surface as stale data the next time the user switches back.
+export function removeKidState(name: string): boolean {
+  const ls = getStorage();
+  if (!ls || !name) return true;
+  try {
+    ls.removeItem(KID_PREFIX + name);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -167,13 +202,18 @@ export function loadLastKid(): string | null {
   }
 }
 
-export function saveLastKid(name: string): void {
+// Returns true on a confirmed write so renameKid can detect a pointer-update
+// failure between writing the new kid key and removing the old one — that
+// window would otherwise leave the lastKid pointer aimed at the deleted old
+// name, dropping the user back to defaults on reload.
+export function saveLastKid(name: string): boolean {
   const ls = getStorage();
-  if (!ls || !name) return;
+  if (!ls || !name) return false;
   try {
     ls.setItem(LAST_KID_KEY, name);
+    return true;
   } catch {
-    /* ignore */
+    return false;
   }
 }
 
@@ -220,23 +260,107 @@ export function defaultStateForLang(lang: Lang, kid: string = ''): ChoreState {
   };
 }
 
-// renameKid is a pure rename: only the kid field changes. Used for inline
-// hero-name edits on the sheet, where the user is correcting a typo or
-// renaming the current kid — not switching to a different kid's saved state.
-// The storage effect mirrors the new state under the new key on next render.
+// renameKid renames the current kid in-place. Used for inline hero-name edits
+// on the sheet, where the user is correcting a typo or renaming the current
+// kid — not switching to a different kid's saved state.
+//
+// Refuses the rename when the target name already has a saved state, to avoid
+// silently clobbering a sibling's data via the storage effect on next render.
+// In that case the user must use the toolbar's kid switcher (applyKidSwitch),
+// which preserves both entries.
+//
+// When the previous kid has saved data, we move it atomically: write under the
+// new key first, update the lastKid pointer to the new name, then remove the
+// old key. Doing all three here (instead of relying on the post-render effect
+// to write later) keeps data safe across an unload/crash window between this
+// state change and the next React commit — without the lastKid update, a crash
+// after the move would leave readInitial() pointing at the now-deleted old
+// name, falling through to defaults and silently "losing" the kid's data.
+// If the write under the new key fails (quota, etc.) we bail before removing
+// the old key — silently completing the state change while the new key is
+// missing would destroy the kid's data on next reload. If only the lastKid
+// pointer write fails (storage rejects the second setItem after accepting the
+// first), we roll back the new key and bail too, otherwise the pointer would
+// still aim at the soon-to-be-deleted old name and reload would fall through
+// to defaults.
+//
+// Every rollback re-saves prev under prev.kid before returning. Returning the
+// same reference makes React skip the re-render, which means the post-render
+// storage effect won't fire — so if memory is ahead of storage (e.g. a prior
+// effect-side save was rejected and silently swallowed), the divergence would
+// stick until the user happens to edit again. The compensating write keeps
+// storage and memory aligned even when the migration aborts.
+//
+// When the previous kid has NO saved data (e.g. storage unavailable in private
+// mode, or the kid was just typed and not yet persisted), the rename proceeds
+// in memory and the storage effect writes under the new key on next render.
+// Failing the rename in that case would be inconsistent with how other inline
+// edits degrade when storage is unavailable.
+//
+// This helper reads (and may write) localStorage. Callers MUST invoke it
+// outside React setState updaters — updaters are required to be pure, and
+// React may double-invoke them in dev or replay them under concurrent
+// rendering, which would either repeat the storage writes or take a different
+// branch on the second invocation.
 export function renameKid(prev: ChoreState, rawNewKid: string): ChoreState {
   const next = String(rawNewKid ?? '').trim();
   if (!next || next === prev.kid) return prev;
-  return { ...prev, kid: next };
+  if (loadKidState(next)) return prev;
+  const renamed = { ...prev, kid: next };
+  if (prev.kid && loadKidState(prev.kid)) {
+    if (!saveKidState(next, renamed)) {
+      // Resync storage with memory: prev may carry edits the effect-side
+      // save dropped. Best-effort — if this also fails, storage is broken
+      // and we accept divergence.
+      saveKidState(prev.kid, prev);
+      return prev;
+    }
+    if (!saveLastKid(next)) {
+      // Best-effort rollback. If removeKidState also fails (catastrophic
+      // storage breakdown — every removeItem throws), the orphan new key
+      // remains and a future renameKid(_, next) will be blocked by the
+      // line-295 guard. Tolerable: storage is broken regardless.
+      removeKidState(next);
+      saveKidState(prev.kid, prev);
+      return prev;
+    }
+    if (!removeKidState(prev.kid)) {
+      // Migration committed (new key written, lastKid points to it) but
+      // the old key wouldn't delete. Without rollback the leftover entry
+      // would surface as stale data if the user later switches back to
+      // prev.kid via applyKidSwitch. Restore the pointer first so a reload
+      // mid-rollback still finds saved state, then drop the new key. If
+      // either step fails (storage broken), accept divergence and keep the
+      // rename — at least lastKid points at a real key.
+      if (saveLastKid(prev.kid) && removeKidState(next)) {
+        saveKidState(prev.kid, prev);
+        return prev;
+      }
+    }
+  }
+  return renamed;
 }
 
 // applyKidSwitch persists the previous state under its old kid name, then
 // either loads the new kid's saved state or seeds defaults. Theme stays put
 // so switching kids doesn't yank the parent's chosen visual.
+//
+// Like renameKid, this helper writes localStorage and MUST NOT be called
+// from inside a React setState updater — see renameKid's note for why.
+//
+// If saveKidState fails for the previous kid AND that kid already had a
+// stored entry, we bail. Otherwise the user's latest in-memory edits would
+// vanish and the still-stored entry would re-load as stale data on next
+// reload. When prev had no stored entry yet (private mode, brand-new kid),
+// the save being a no-op is fine — there's no data divergence to protect —
+// and we proceed so storage-unavailable browsers can still switch kids.
 export function applyKidSwitch(prev: ChoreState, rawNewKid: string): ChoreState {
   const next = String(rawNewKid ?? '').trim();
   if (!next || next === prev.kid) return prev;
-  if (prev.kid) saveKidState(prev.kid, prev);
+  if (prev.kid) {
+    const hadSavedState = loadKidState(prev.kid) !== null;
+    if (!saveKidState(prev.kid, prev) && hadSavedState) return prev;
+  }
   const saved = loadKidState(next);
   if (saved) return { ...saved, kid: next };
   return { ...defaultStateForLang(prev.lang, next), theme: prev.theme };
