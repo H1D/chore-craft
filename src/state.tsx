@@ -42,6 +42,7 @@ export interface ChoreState {
 export const KID_PREFIX = 'chorecraft:kid:';
 export const LAST_KID_KEY = 'chorecraft:lastKid';
 export const HASH_DEBOUNCE_MS = 200;
+export const CHORE_CAP = 7;
 
 // ── Codec ───────────────────────────────────────────────────────────────────
 
@@ -144,6 +145,61 @@ export function saveLastKid(name: string): void {
   } catch {
     /* ignore */
   }
+}
+
+// ── Defaults + kid-switch helpers ──────────────────────────────────────────
+// Read DEFAULT_CHORES from window so state.tsx stays decoupled from i18n's
+// module side effects (i18n.tsx mutates `window` at import). main.tsx imports
+// './i18n' before mounting, so the global is populated by the time any of
+// these helpers runs in production. Tests can stub it on globalThis.
+
+const FALLBACK_STARTER_CHORES: Record<Lang, { name: string; xp: number }[]> = {
+  en: [
+    { name: 'Read for 30 minutes', xp: 20 },
+    { name: 'Make your bed', xp: 5 },
+  ],
+  ru: [
+    { name: 'Читать 30 минут', xp: 20 },
+    { name: 'Заправить кровать', xp: 5 },
+  ],
+  nl: [
+    { name: 'Lees 30 minuten', xp: 20 },
+    { name: 'Bed opmaken', xp: 5 },
+  ],
+};
+
+export function getStarterChores(lang: Lang): { name: string; xp: number }[] {
+  const w: any = typeof window !== 'undefined' ? window : null;
+  const list = w?.DEFAULT_CHORES?.[lang];
+  if (Array.isArray(list) && list.length > 0) {
+    return list.map((c: any) => ({ name: String(c.name ?? ''), xp: Number(c.xp ?? 0) }));
+  }
+  return FALLBACK_STARTER_CHORES[lang] ?? FALLBACK_STARTER_CHORES.en;
+}
+
+export function defaultStateForLang(lang: Lang, kid: string = ''): ChoreState {
+  return {
+    kid,
+    level: 1,
+    levelName: '',
+    classTitle: '',
+    reward: '',
+    lang,
+    theme: 'quest-scroll',
+    chores: getStarterChores(lang).map((c) => ({ name: c.name, xp: c.xp, on: true })),
+  };
+}
+
+// applyKidSwitch persists the previous state under its old kid name, then
+// either loads the new kid's saved state or seeds defaults. Theme stays put
+// so switching kids doesn't yank the parent's chosen visual.
+export function applyKidSwitch(prev: ChoreState, rawNewKid: string): ChoreState {
+  const next = String(rawNewKid ?? '').trim();
+  if (!next || next === prev.kid) return prev;
+  if (prev.kid) saveKidState(prev.kid, prev);
+  const saved = loadKidState(next);
+  if (saved) return { ...saved, kid: next };
+  return { ...defaultStateForLang(prev.lang, next), theme: prev.theme };
 }
 
 // ── useChoreState hook ──────────────────────────────────────────────────────

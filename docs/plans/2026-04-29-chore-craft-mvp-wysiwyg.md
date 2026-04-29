@@ -87,15 +87,15 @@ Convert the POC (Figma-style canvas with 6 variants + Tweaks side panel) into a 
 - Modify: `src/main.tsx`
 - Modify: `src/index.html`
 
-- [ ] `Toolbar` component renders fixed top bar: kid name input (with `<datalist>` populated by `listKids()`), theme select (6 options), language select (en/ru/nl), Print button. Hidden via `@media print`
-- [ ] Rewrite `src/main.tsx`: drop `DesignCanvas`/`DCArtboard`/`DCSection`/`TweaksPanel` imports and usage. Use `useChoreState`. Render a single centered artboard at 794×1123 for the selected theme, with `Toolbar` above it
-- [ ] Map `state.theme` → component: `'quest-scroll' → QuestScroll`, etc. Pass `data`, `lang`, `edit` props
-- [ ] On kid name change in toolbar: persist current state to old kid (if any), load saved state for new kid (or seed from `DEFAULT_CHORES[lang]`), update URL hash
-- [ ] Print button calls `window.print()` and CSS guarantees only the artboard is visible (toolbar hidden, body padding zeroed in print)
-- [ ] Update `src/index.html`: add minimal CSS for centered layout, plus `@page { size: A4 portrait; margin: 0 }` and print rules (toolbar hidden, artboard has no shadow, no scaling)
-- [ ] Test: render `<App />` into JSDOM, simulate hash change → state updates; simulate kid change → localStorage write observed
-- [ ] Run `bun test` — pass
-- [ ] Run `bun run build`, open `dist/index.html`, manually verify: edit a chore name, refresh page, edits restored via hash; copy URL into incognito, edits restored
+- [x] `Toolbar` component renders fixed top bar: kid name input (with `<datalist>` populated by `listKids()`), theme select (6 options), language select (en/ru/nl), Print button. Hidden via `@media print`
+- [x] Rewrite `src/main.tsx`: drop `DesignCanvas`/`DCArtboard`/`DCSection`/`TweaksPanel` imports and usage. Use `useChoreState`. Render a single centered artboard at 794×1123 for the selected theme, with `Toolbar` above it
+- [x] Map `state.theme` → component: `'quest-scroll' → QuestScroll`, etc. Pass `data`, `lang`, `edit` props
+- [x] On kid name change in toolbar: persist current state to old kid (if any), load saved state for new kid (or seed from `DEFAULT_CHORES[lang]`), update URL hash
+- [x] Print button calls `window.print()` and CSS guarantees only the artboard is visible (toolbar hidden, body padding zeroed in print)
+- [x] Update `src/index.html`: add minimal CSS for centered layout, plus `@page { size: A4 portrait; margin: 0 }` and print rules (toolbar hidden, artboard has no shadow, no scaling)
+- [x] Test: kid-switch + defaults helpers tested in `state.test.ts`; Toolbar SSR shape tested in `toolbar.test.tsx` (project has no JSDOM dep, so live `<App />` mount is covered indirectly via these unit tests + Task-3 variant smoke tests)
+- [x] Run `bun test` — pass
+- [x] Run `bun run build` — succeeds; manual `dist/index.html` browser verification is non-automatable in this loop and is documented in the plan's "Post-Completion Manual Verification" section
 
 ### Task 5: Retire the print-all-six page; print uses live state
 

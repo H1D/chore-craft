@@ -2,8 +2,11 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import {
   KID_PREFIX,
   LAST_KID_KEY,
+  applyKidSwitch,
   decodeState,
+  defaultStateForLang,
   encodeState,
+  getStarterChores,
   listKids,
   loadKidState,
   loadLastKid,
@@ -139,5 +142,77 @@ describe('kid storage', () => {
     saveLastKid('');
     expect(listKids()).toEqual([]);
     expect(loadLastKid()).toBeNull();
+  });
+});
+
+describe('defaultStateForLang', () => {
+  test('returns starter chores for the requested language with on=true', () => {
+    const s = defaultStateForLang('en', 'Alex');
+    expect(s.kid).toBe('Alex');
+    expect(s.lang).toBe('en');
+    expect(s.theme).toBe('quest-scroll');
+    expect(s.level).toBe(1);
+    expect(s.chores.length).toBeGreaterThan(0);
+    for (const c of s.chores) {
+      expect(c.on).toBe(true);
+      expect(typeof c.name).toBe('string');
+      expect(typeof c.xp).toBe('number');
+    }
+  });
+
+  test('blank kid is allowed (used for very first mount)', () => {
+    expect(defaultStateForLang('ru').kid).toBe('');
+  });
+
+  test('getStarterChores prefers window.DEFAULT_CHORES when present', () => {
+    (globalThis as any).window = globalThis;
+    (globalThis as any).DEFAULT_CHORES = {
+      en: [{ name: 'Custom chore', xp: 42 }],
+    };
+    try {
+      expect(getStarterChores('en')).toEqual([{ name: 'Custom chore', xp: 42 }]);
+    } finally {
+      delete (globalThis as any).DEFAULT_CHORES;
+      delete (globalThis as any).window;
+    }
+  });
+});
+
+describe('applyKidSwitch', () => {
+  test('returns prev unchanged when name is blank or equal', () => {
+    const prev = sampleState({ kid: 'Alex' });
+    expect(applyKidSwitch(prev, '   ')).toBe(prev);
+    expect(applyKidSwitch(prev, 'Alex')).toBe(prev);
+  });
+
+  test('persists previous state under previous kid name before switching', () => {
+    const prev = sampleState({ kid: 'Alex', reward: 'Pillow fort' });
+    applyKidSwitch(prev, 'Mira');
+    const reloaded = loadKidState('Alex');
+    expect(reloaded).not.toBeNull();
+    expect(reloaded!.reward).toBe('Pillow fort');
+  });
+
+  test('loads saved state for the new kid when one exists', () => {
+    saveKidState('Mira', sampleState({ kid: 'Mira', reward: 'Frietjes' }));
+    const next = applyKidSwitch(sampleState({ kid: 'Alex' }), 'Mira');
+    expect(next.kid).toBe('Mira');
+    expect(next.reward).toBe('Frietjes');
+  });
+
+  test('seeds defaults for an unknown new kid, keeping the parent-chosen theme', () => {
+    const prev = sampleState({ kid: 'Alex', theme: 'minecraft', lang: 'ru' });
+    const next = applyKidSwitch(prev, 'Newcomer');
+    expect(next.kid).toBe('Newcomer');
+    expect(next.theme).toBe('minecraft');
+    expect(next.lang).toBe('ru');
+    expect(next.reward).toBe('');
+    expect(next.chores.length).toBeGreaterThan(0);
+  });
+
+  test('trims surrounding whitespace before comparing or switching', () => {
+    const prev = sampleState({ kid: 'Alex' });
+    const next = applyKidSwitch(prev, '  Mira  ');
+    expect(next.kid).toBe('Mira');
   });
 });
