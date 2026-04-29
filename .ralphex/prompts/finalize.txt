@@ -1,0 +1,54 @@
+# finalize prompt
+# this prompt runs once after successful reviews, best-effort (failures logged but don't block)
+#
+# available variables:
+#   {{DEFAULT_BRANCH}} - default branch name (main, master, trunk, etc.)
+
+Post-completion finalize step.
+
+Goal: prepare current feature branch for review, push it to origin, and create a GitHub pull request.
+
+Rules:
+- Never deploy anything.
+- Do not push directly to {{DEFAULT_BRANCH}}.
+- If current branch is {{DEFAULT_BRANCH}}, stop and report that a feature branch is required.
+- If origin remote is missing, stop and report that origin must be configured.
+- If GitHub CLI auth is missing, stop and report that `gh auth login` is required.
+- If a pull request already exists for this branch, do not create a duplicate. Report the existing PR URL.
+
+Steps:
+
+1. Inspect current state:
+   - Run `git status --short`
+   - Run `git branch --show-current`
+   - Run `git remote get-url origin`
+   - Run `gh auth status`
+
+2. Fetch latest base:
+   - Run `git fetch origin`
+
+3. Rebase current branch onto latest {{DEFAULT_BRANCH}}:
+   - Run `git rebase origin/{{DEFAULT_BRANCH}}`
+   - If conflicts occur, resolve them and continue rebase
+   - If rebase fails completely, abort with `git rebase --abort` and report the issue
+
+4. Verify branch:
+   - Run validation commands from the plan file if present
+   - Also check CLAUDE.md or AGENTS.md for project-specific validation commands
+   - If no validation command is documented, report that no validation command was found
+
+5. Push current branch to origin:
+   - Store current branch name from `git branch --show-current`
+   - Run `git push -u origin HEAD`
+   - If push is rejected after a successful rebase, inspect and report the reason
+
+6. Create or report pull request:
+   - First run `gh pr view --json url -q .url`
+   - If a PR exists, report that URL
+   - If no PR exists, run:
+     `gh pr create --fill --base {{DEFAULT_BRANCH}} --head <current-branch>`
+   - Report the created PR URL
+
+Report what was done. This step is best-effort - if any step fails, explain why and leave the branch as-is.
+
+OUTPUT FORMAT: No markdown formatting (no **bold**, `code`, # headers). Plain text and - lists are fine.

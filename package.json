@@ -1,0 +1,16 @@
+{
+  "name": "chore-craft",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "bun scripts/build.ts",
+    "deploy": "bun run build && wrangler pages deploy dist --project-name=chorecraft --branch=main"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
