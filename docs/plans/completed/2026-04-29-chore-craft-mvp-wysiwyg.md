@@ -119,9 +119,9 @@ Convert the POC (Figma-style canvas with 6 variants + Tweaks side panel) into a 
 
 ### Task 7: Update documentation
 
-- [ ] Update `AGENTS.md`: replace "design canvas + Tweaks panel" sections with "single-theme WYSIWYG + toolbar"; update file map; note URL hash + localStorage persistence; note tweakable fields are now inline; remove print.html section
-- [ ] Update `README.md`: rewrite Quick Start (open page, edit, print); document URL share + per-kid localStorage; remove references to print.html / design canvas
-- [ ] Move this plan to `docs/plans/completed/`
+- [x] Update `AGENTS.md`: replace "design canvas + Tweaks panel" sections with "single-theme WYSIWYG + toolbar"; update file map; note URL hash + localStorage persistence; note tweakable fields are now inline; remove print.html section
+- [x] Update `README.md`: rewrite Quick Start (open page, edit, print); document URL share + per-kid localStorage; remove references to print.html / design canvas
+- [x] Move this plan to `docs/plans/completed/`
 
 ## Post-Completion Manual Verification
 
