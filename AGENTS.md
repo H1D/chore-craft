@@ -40,7 +40,7 @@ Languages supported: English, Russian, Dutch. All UI strings live in `src/i18n.t
 ## Entry Points
 
 - `src/index.html` + `src/main.tsx`: WYSIWYG single-theme app shell with toolbar, persisted state, and inline editing.
-- `src/toolbar.tsx`: top toolbar (kid `<select>` with an "Add new kid..." modal, theme select, language select, Print button). Hidden via `@media print`.
+- `src/toolbar.tsx`: top toolbar (kid `<select>` with an "Add new kid..." modal, theme select, language select, Highlight fields checkbox, Print button). Hidden via `@media print`.
 - `src/state.tsx`: `ChoreState` type, URL-safe base64 codec (`encodeState` / `decodeState`), per-kid `localStorage` adapter (`loadKidState` / `saveKidState` / `listKids` / `loadLastKid`), and the `useChoreState` hook (URL hash mirror debounced 200ms, fallback to last-kid storage, then to defaults).
 - `src/inline.tsx`: `InlineText`, `InlineNumber`, `InlineAddRow`, `InlineRemoveButton` primitives. The `.cc-edit` style block is injected once via `useEffect`; the `.cc-edit-ui` class hides + / × buttons in print.
 - Only Quest Scroll and Character Sheet are active themes. Disabled prototype variants may remain in `src/`, but do not register them in `src/main.tsx` or `src/toolbar.tsx` until their layouts are fixed.
@@ -85,11 +85,13 @@ Do not mix these. Each theme keeps its own palette, typography, and border style
 
 ## Inline Editing
 
-Editable fields are: hero name, level number, level title, class title, reward, and each daily quest's name + XP. Add a quest with the `+` button at the end of the daily quest list (capped at 7). Remove a quest with the row's leading `×` button. Both buttons carry the `cc-edit-ui` class and are hidden via `@media print`.
+Editable fields are: hero name, level number, level title, class title, reward, and each daily quest's name + XP. Daily quest XP is nullable; clearing the XP field stores `null` and prints a blank XP value. Add a quest with the `+` button at the end of the daily quest list (capped at 7). Remove a quest with the row's leading `×` button. Both buttons carry the `cc-edit-ui` class and are hidden via `@media print`.
 
 Bonus quests are not editable. They are meant to be blank on the print. Do not add inline primitives there.
 
 Inline edits must not change layout height. Use `contentEditable` + `min-width`; never grow rows past their existing footprint.
+
+The toolbar's Highlight fields checkbox is screen-only. It toggles the `cc-highlight-fields` class on the artboard; print CSS must remove any highlight background/shadow.
 
 ## Persistence
 
@@ -114,7 +116,7 @@ Open `dist/index.html`, edit fields inline, hit the toolbar's Print button (or `
 2. Build it at 794 x 1123, fill the page, leave room for marker checkboxes.
 3. Use `t.days`, `t.dailyQuests`, `t.bonusQuests`, `t.levelLabel`, `t.signature`, `t.witness`, etc. from `window.I18N[lang]`.
 4. Bonus quest names and bonus quest XP must be blank fillable lines.
-5. Daily quest XP should be `+{c.xp}` or the variant's equivalent. Wrap it in `InlineNumber` when `edit` is provided so it stays editable on screen and prints cleanly when `edit` is `undefined`.
+5. Daily quest XP should be `+{c.xp ?? ''}` or the variant's equivalent. Wrap it in nullable `InlineNumber`/`EditableNumber` when `edit` is provided so it stays editable on screen and prints cleanly when `edit` is `undefined`.
 6. Export the component and assign it to `window`.
 7. Register it in `src/main.tsx`'s theme map and add an option to the toolbar's theme `<select>`.
 

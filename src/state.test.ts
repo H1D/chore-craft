@@ -118,6 +118,13 @@ describe('codec', () => {
     expect(decoded!.kid).toBe('Alex');
   });
 
+  test('round-trips nullable chore XP', () => {
+    const s = sampleState({
+      chores: [{ name: 'Blank XP chore', xp: null, on: true }],
+    });
+    expect(decodeState(encodeState(s))).toEqual(s);
+  });
+
   test('rejects numeric fields outside the UI clamp range (level/xp must be int 1..99)', () => {
     // Without this, a crafted URL hash or corrupted localStorage entry could
     // inject impossible values and have them re-persisted until the user
@@ -145,6 +152,11 @@ describe('codec', () => {
     expect(
       decodeState(
         encodeState({ ...sampleState(), chores: [{ name: 'x', xp: 1.5, on: true }] }),
+      ),
+    ).toBeNull();
+    expect(
+      decodeState(
+        encodeState({ ...sampleState(), chores: [{ name: 'x', xp: '5', on: true }] } as any),
       ),
     ).toBeNull();
   });

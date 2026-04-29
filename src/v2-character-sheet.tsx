@@ -212,10 +212,11 @@ function SkillRow({ chore, index, t, days, placeholder, edit }) {
           <>
             +
             <EditableNumber
-              value={chore.xp as number}
+              value={chore.xp}
               min={1}
               max={99}
-              onChange={(v: number) => edit.setChoreXp(index, v)}
+              nullable
+              onChange={(v: number | null) => edit.setChoreXp(index, v)}
               ariaLabel={`Skill ${index + 1} XP`}
             />
           </>

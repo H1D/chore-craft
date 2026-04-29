@@ -18,7 +18,7 @@ export type Lang = 'en' | 'ru' | 'nl';
 
 export interface Chore {
   name: string;
-  xp: number;
+  xp: number | null;
   on: boolean;
 }
 
@@ -109,7 +109,7 @@ function normalizeChoreState(v: unknown): ChoreState | null {
     if (!c || typeof c !== 'object') return null;
     const ch = c as Record<string, unknown>;
     if (typeof ch.name !== 'string') return null;
-    if (!isIntInRange(ch.xp, XP_MIN, XP_MAX)) return null;
+    if (ch.xp !== null && !isIntInRange(ch.xp, XP_MIN, XP_MAX)) return null;
     if (typeof ch.on !== 'boolean') return null;
     chores.push({ name: ch.name, xp: ch.xp, on: ch.on });
   }

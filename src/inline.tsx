@@ -10,7 +10,7 @@ import { flushSync } from 'react-dom';
 //   - InlineAddRow / InlineRemoveButton: tiny SVG +/× buttons,
 //     hidden by @media print so the printed surface stays clean.
 //   - Pure helpers (sanitizeText, parseClampInt, commitTextValue,
-//     commitNumberValue) carry the dispatch logic so tests can
+//     commitNumberValue, commitNullableNumberValue) carry the dispatch logic so tests can
 //     verify it without a DOM.
 
 // ── Pure helpers ────────────────────────────────────────────────────────────
@@ -50,15 +50,37 @@ export function commitNumberValue(
   return parsed;
 }
 
+export function commitNullableNumberValue(
+  rawTextContent: string,
+  currentValue: number | null,
+  min: number,
+  max: number,
+  onChange: (v: number | null) => void,
+): number | null {
+  if (String(rawTextContent).trim() === '') {
+    if (currentValue !== null) onChange(null);
+    return null;
+  }
+  const parsed = parseClampInt(rawTextContent, min, max);
+  if (parsed === null) return currentValue;
+  if (parsed !== currentValue) onChange(parsed);
+  return parsed;
+}
+
+function formatNumberValue(value: number | null): string {
+  return value === null ? '' : String(value);
+}
+
 // ── Style injection ─────────────────────────────────────────────────────────
 
 export const STYLE_ID = 'cc-inline-styles';
 export const STYLE_CSS =
   '.cc-edit{outline:none;border-radius:2px}' +
+  '.cc-highlight-fields .cc-edit{box-shadow:0 0 0 1px rgba(201,100,66,0.45);background:rgba(255,246,188,0.55)}' +
   '.cc-edit:focus{box-shadow:0 0 0 1.5px #c96442;background:#fff}' +
   '.cc-edit-ui{appearance:none;background:transparent;border:1px dashed #c96442;color:#c96442;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;line-height:0}' +
   '.cc-edit-ui:hover{background:#fff2ec}' +
-  '@media print{.cc-edit-ui{display:none!important}.cc-edit{box-shadow:none!important;background:transparent!important}}';
+  '@media print{.cc-edit-ui{display:none!important}.cc-edit,.cc-highlight-fields .cc-edit{box-shadow:none!important;background:transparent!important}}';
 
 export function useInjectInlineStyles(): void {
   React.useEffect(() => {
@@ -153,29 +175,38 @@ export function InlineText({ value, onChange, style, ariaLabel }: InlineTextProp
 // ── InlineNumber ────────────────────────────────────────────────────────────
 
 export interface InlineNumberProps {
-  value: number;
+  value: number | null;
   min: number;
   max: number;
-  onChange: (v: number) => void;
+  onChange: (v: number | null) => void;
+  nullable?: boolean;
   style?: React.CSSProperties;
   ariaLabel?: string;
 }
 
-export function InlineNumber({ value, min, max, onChange, style, ariaLabel }: InlineNumberProps) {
+export function InlineNumber({
+  value,
+  min,
+  max,
+  onChange,
+  nullable,
+  style,
+  ariaLabel,
+}: InlineNumberProps) {
   useInjectInlineStyles();
   const ref = React.useRef<HTMLSpanElement>(null);
-  const [initial] = React.useState<string>(String(value));
+  const [initial] = React.useState<string>(formatNumberValue(value));
   // See InlineText: ref-mirrored value lets commit() read the resolved value
   // synchronously after flushSync, so the rollback (invalid input → revert
   // to current) lands before any sibling click handler runs window.print().
-  const valueRef = React.useRef<number>(value);
+  const valueRef = React.useRef<number | null>(value);
   valueRef.current = value;
 
   React.useEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (typeof document !== 'undefined' && document.activeElement === el) return;
-    const want = String(value);
+    const want = formatNumberValue(value);
     if (el.textContent !== want) el.textContent = want;
   }, [value]);
 
@@ -183,9 +214,19 @@ export function InlineNumber({ value, min, max, onChange, style, ariaLabel }: In
     const el = ref.current;
     if (!el) return;
     flushSync(() => {
-      commitNumberValue(el.textContent ?? '', value, min, max, onChange);
+      if (nullable) {
+        commitNullableNumberValue(el.textContent ?? '', value, min, max, onChange);
+      } else {
+        commitNumberValue(
+          el.textContent ?? '',
+          value ?? min,
+          min,
+          max,
+          onChange as (v: number) => void,
+        );
+      }
     });
-    const want = String(valueRef.current);
+    const want = formatNumberValue(valueRef.current);
     if (el.textContent !== want) el.textContent = want;
   };
 
@@ -242,10 +283,11 @@ export function EditableText({ value, onChange, style, ariaLabel }: EditableText
 }
 
 export interface EditableNumberProps {
-  value: number;
+  value: number | null;
   min: number;
   max: number;
-  onChange?: (v: number) => void;
+  onChange?: (v: number | null) => void;
+  nullable?: boolean;
   style?: React.CSSProperties;
   ariaLabel?: string;
 }
@@ -255,16 +297,18 @@ export function EditableNumber({
   min,
   max,
   onChange,
+  nullable,
   style,
   ariaLabel,
 }: EditableNumberProps) {
-  if (!onChange) return <span style={style}>{value}</span>;
+  if (!onChange) return <span style={style}>{formatNumberValue(value)}</span>;
   return (
     <InlineNumber
       value={value}
       min={min}
       max={max}
       onChange={onChange}
+      nullable={nullable}
       style={style}
       ariaLabel={ariaLabel}
     />

@@ -20,7 +20,7 @@ const baseData = {
   reward: 'Pillow fort & movie night',
   chores: [
     { name: 'Read 30 min', xp: 20 },
-    { name: 'Math practice', xp: 15 },
+    { name: 'Math practice', xp: null },
   ],
   bonus: [],
 };
@@ -60,6 +60,7 @@ describe('QuestScroll edit-mode wiring', () => {
     expect(html).not.toContain('aria-label="Remove quest 1"');
     expect(html).toContain('Alex');
     expect(html).toContain('Read 30 min');
+    expect(html).not.toContain('null');
   });
 
   test('hides the add-row button when chores hit the cap of 7', () => {

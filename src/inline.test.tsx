@@ -8,6 +8,7 @@ import {
   InlineText,
   STYLE_CSS,
   commitNumberValue,
+  commitNullableNumberValue,
   commitTextValue,
   parseClampInt,
   sanitizeText,
@@ -119,6 +120,44 @@ describe('commitNumberValue', () => {
   });
 });
 
+describe('commitNullableNumberValue', () => {
+  test('commits null for empty input', () => {
+    let captured: number | null | undefined;
+    const result = commitNullableNumberValue('', 10, 1, 99, (v) => {
+      captured = v;
+    });
+    expect(result).toBeNull();
+    expect(captured).toBeNull();
+  });
+
+  test('keeps null unchanged without dispatch', () => {
+    let called = false;
+    const result = commitNullableNumberValue('   ', null, 1, 99, () => {
+      called = true;
+    });
+    expect(result).toBeNull();
+    expect(called).toBe(false);
+  });
+
+  test('parses and clamps non-empty input', () => {
+    let captured: number | null | undefined;
+    const result = commitNullableNumberValue('150', null, 1, 99, (v) => {
+      captured = v;
+    });
+    expect(result).toBe(99);
+    expect(captured).toBe(99);
+  });
+
+  test('reverts invalid non-empty input', () => {
+    let called = false;
+    const result = commitNullableNumberValue('abc', null, 1, 99, () => {
+      called = true;
+    });
+    expect(result).toBeNull();
+    expect(called).toBe(false);
+  });
+});
+
 describe('InlineText render', () => {
   test('produces a contenteditable span carrying the initial value', () => {
     const html = renderToStaticMarkup(<InlineText value="Hello" onChange={() => {}} />);
@@ -150,6 +189,14 @@ describe('InlineNumber render', () => {
     expect(html).toContain('contenteditable="true"');
     expect(html).toContain('42');
     expect(html.toLowerCase()).toContain('inputmode="numeric"');
+  });
+
+  test('renders nullable number as empty content', () => {
+    const html = renderToStaticMarkup(
+      <InlineNumber value={null} min={1} max={99} nullable onChange={() => {}} />,
+    );
+    expect(html).toContain('contenteditable="true"');
+    expect(html).not.toContain('>null<');
   });
 });
 
@@ -183,5 +230,6 @@ describe('STYLE_CSS', () => {
     expect(STYLE_CSS).toContain('.cc-edit-ui');
     expect(STYLE_CSS).toContain('display:none');
     expect(STYLE_CSS).toContain('.cc-edit:focus');
+    expect(STYLE_CSS).toContain('.cc-highlight-fields .cc-edit');
   });
 });

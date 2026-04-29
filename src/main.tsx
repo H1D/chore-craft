@@ -23,6 +23,7 @@ const THEME_COMPONENTS: Record<Theme, React.ComponentType<any>> = {
 function App() {
   const initialDefaults = React.useMemo(() => defaultStateForLang('en'), []);
   const [state, setState] = useChoreState(initialDefaults);
+  const [highlightFields, setHighlightFields] = React.useState(false);
 
   // stateRef gives event handlers access to the latest state without forcing
   // the `edit` object to re-build every render. Used so renameKid / applyKidSwitch
@@ -58,7 +59,9 @@ function App() {
         const next = renameKid(cur, v);
         if (next !== cur) setState(next);
       },
-      setLevel: (v: number) => setState((prev) => ({ ...prev, level: v })),
+      setLevel: (v: number | null) => {
+        if (v !== null) setState((prev) => ({ ...prev, level: v }));
+      },
       setLevelName: (v: string) => setState((prev) => ({ ...prev, levelName: v })),
       setClassTitle: (v: string) => setState((prev) => ({ ...prev, classTitle: v })),
       setReward: (v: string) => setState((prev) => ({ ...prev, reward: v })),
@@ -67,7 +70,7 @@ function App() {
           ...prev,
           chores: prev.chores.map((c, ci) => (ci === i ? { ...c, name: v } : c)),
         })),
-      setChoreXp: (i: number, v: number) =>
+      setChoreXp: (i: number, v: number | null) =>
         setState((prev) => ({
           ...prev,
           chores: prev.chores.map((c, ci) => (ci === i ? { ...c, xp: v } : c)),
@@ -76,7 +79,7 @@ function App() {
         setState((prev) =>
           prev.chores.length >= CHORE_CAP
             ? prev
-            : { ...prev, chores: [...prev.chores, { name: '', xp: 5, on: true }] },
+            : { ...prev, chores: [...prev.chores, { name: '', xp: null, on: true }] },
         ),
       removeChore: (i: number) =>
         setState((prev) => ({
@@ -107,6 +110,7 @@ function App() {
         theme={state.theme}
         lang={state.lang}
         knownKids={knownKids}
+        highlightFields={highlightFields}
         onKidCommit={(v) => {
           const cur = stateRef.current;
           const next = applyKidSwitch(cur, v);
@@ -116,12 +120,13 @@ function App() {
         }}
         onThemeChange={(v) => setState((prev) => ({ ...prev, theme: v }))}
         onLangChange={(v) => setState((prev) => ({ ...prev, lang: v }))}
+        onHighlightFieldsChange={setHighlightFields}
         onPrint={() => {
           if (typeof window !== 'undefined') window.print();
         }}
       />
       <div className="cc-stage">
-        <div className="cc-artboard">
+        <div className={`cc-artboard${highlightFields ? ' cc-highlight-fields' : ''}`}>
           <ThemeComp data={data} lang={state.lang} edit={edit} />
         </div>
       </div>

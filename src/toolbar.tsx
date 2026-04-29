@@ -26,6 +26,7 @@ export const TOOLBAR_CSS =
   '.cc-toolbar label{display:inline-flex;align-items:center;gap:6px;color:#555;font-weight:500}' +
   '.cc-toolbar input,.cc-toolbar select{font:inherit;padding:4px 8px;border:1px solid #c5c0b8;border-radius:4px;background:#fff;color:#222;min-width:0}' +
   '.cc-toolbar input:focus,.cc-toolbar select:focus{outline:none;border-color:#c96442;box-shadow:0 0 0 2px rgba(201,100,66,0.2)}' +
+  '.cc-toolbar input[type="checkbox"]{width:16px;height:16px;padding:0;margin:0;accent-color:#c96442}' +
   '.cc-toolbar .cc-kid-select{width:180px}' +
   '.cc-toolbar button{font:inherit;padding:5px 14px;border:1px solid #c96442;border-radius:4px;background:#c96442;color:#fff;cursor:pointer;font-weight:600;letter-spacing:0.02em}' +
   '.cc-toolbar button:hover{background:#b3502f;border-color:#b3502f}' +
@@ -69,9 +70,11 @@ export interface ToolbarProps {
   theme: Theme;
   lang: Lang;
   knownKids: string[];
+  highlightFields: boolean;
   onKidCommit: (next: string) => boolean;
   onThemeChange: (next: Theme) => void;
   onLangChange: (next: Lang) => void;
+  onHighlightFieldsChange: (next: boolean) => void;
   onPrint: () => void;
 }
 
@@ -80,9 +83,11 @@ export function Toolbar({
   theme,
   lang,
   knownKids,
+  highlightFields,
   onKidCommit,
   onThemeChange,
   onLangChange,
+  onHighlightFieldsChange,
   onPrint,
 }: ToolbarProps) {
   useInjectToolbarStyles();
@@ -186,6 +191,16 @@ export function Toolbar({
               </option>
             ))}
           </select>
+        </label>
+
+        <label>
+          <input
+            type="checkbox"
+            checked={highlightFields}
+            aria-label={copy.highlightFields}
+            onChange={(e) => onHighlightFieldsChange(e.currentTarget.checked)}
+          />
+          {copy.highlightFields}
         </label>
 
         <span className="cc-spacer" aria-hidden="true" />

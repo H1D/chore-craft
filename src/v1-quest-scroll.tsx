@@ -122,7 +122,8 @@ function QuestScroll({ data, lang, edit }) {
                     value={c.xp}
                     min={1}
                     max={99}
-                    onChange={edit ? (v: number) => edit.setChoreXp(i, v) : undefined}
+                    nullable
+                    onChange={edit ? (v: number | null) => edit.setChoreXp(i, v) : undefined}
                     ariaLabel={`Quest ${i + 1} XP`}
                   />
                 </td>

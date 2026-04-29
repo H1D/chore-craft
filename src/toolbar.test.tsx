@@ -10,9 +10,11 @@ const baseProps = {
   theme: 'quest-scroll' as const,
   lang: 'en' as const,
   knownKids: ['Alex', 'Mira'],
+  highlightFields: false,
   onKidCommit: noop,
   onThemeChange: noop,
   onLangChange: noop,
+  onHighlightFieldsChange: noop,
   onPrint: noop,
 };
 
@@ -66,6 +68,14 @@ describe('Toolbar render', () => {
     expect(html).toContain('>Print</button>');
   });
 
+  test('renders highlight-fields checkbox', () => {
+    const html = renderToStaticMarkup(<Toolbar {...baseProps} highlightFields />);
+    expect(html).toContain('type="checkbox"');
+    expect(html).toContain('aria-label="Highlight fields"');
+    expect(html).toContain('checked=""');
+    expect(html).toContain('Highlight fields');
+  });
+
   test('toolbar root carries the cc-toolbar class and ARIA toolbar role', () => {
     const html = renderToStaticMarkup(<Toolbar {...baseProps} />);
     expect(html).toContain('class="cc-toolbar"');
@@ -78,6 +88,7 @@ describe('Toolbar style sheet', () => {
     expect(TOOLBAR_CSS).toContain('@media print');
     expect(TOOLBAR_CSS).toContain('.cc-toolbar');
     expect(TOOLBAR_CSS).toContain('.cc-kid-dialog');
+    expect(TOOLBAR_CSS).toContain('input[type="checkbox"]');
     expect(TOOLBAR_CSS).toContain('display:none');
     expect(TOOLBAR_CSS).toContain('position:fixed');
   });

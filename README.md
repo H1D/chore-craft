@@ -28,9 +28,10 @@ bunx serve dist
 Open the local URL printed by `serve`. You'll see one A4 sheet centered under a slim toolbar.
 
 1. Pick a saved kid from the toolbar dropdown, or choose "Add new kid..." and enter a name in the modal.
-2. Click any field on the sheet (hero name, level, quest names, XP, reward) and type to edit. Use the `+` row to add a quest, the `×` button to remove one.
+2. Click any field on the sheet (hero name, level, quest names, XP, reward) and type to edit. XP can be left blank. Use the `+` row to add a quest, the `×` button to remove one.
 3. Pick a theme and language from the toolbar.
-4. Hit Print (or `Cmd/Ctrl-P`). Only the artboard prints — the toolbar and edit chrome are hidden.
+4. Toggle Highlight fields in the toolbar if you want editable fields marked on screen.
+5. Hit Print (or `Cmd/Ctrl-P`). Only the artboard prints — the toolbar and edit chrome are hidden.
 
 ## Persistence
 
