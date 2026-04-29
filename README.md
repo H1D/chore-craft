@@ -29,7 +29,7 @@ bunx serve dist
 
 Open the local URL printed by `serve`. You'll see one A4 sheet centered under a slim toolbar.
 
-1. Type the kid's name in the toolbar (autocomplete suggests previously saved kids).
+1. Pick a saved kid from the toolbar dropdown, or choose "Add new kid..." and enter a name in the modal.
 2. Click any field on the sheet (hero name, level, quest names, XP, reward) and type to edit. Use the `+` row to add a quest, the `×` button to remove one.
 3. Pick a theme and language from the toolbar.
 4. Hit Print (or `Cmd/Ctrl-P`). Only the artboard prints — the toolbar and edit chrome are hidden.
@@ -37,7 +37,7 @@ Open the local URL printed by `serve`. You'll see one A4 sheet centered under a 
 ## Persistence
 
 - The URL hash encodes the full state. Copy the URL, paste it anywhere, the page rebuilds the same sheet.
-- Each kid's state is auto-saved to `localStorage` under `chorecraft:kid:<name>`. Switching kids in the toolbar restores their last setup; switching to a brand-new name starts from defaults.
+- Each kid's state is auto-saved to `localStorage` under `chorecraft:kid:<name>`. Switching kids in the toolbar dropdown restores their last setup; adding a brand-new name starts from defaults.
 - The most recently used kid is restored on next page load if the URL has no hash.
 
 ## File Map

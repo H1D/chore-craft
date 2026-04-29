@@ -4,7 +4,7 @@ Persistent context for agents working on this project.
 
 ## Project at a Glance
 
-Kids tracking is a gamified chore/learning dashboard for two kids ages 10-12. Output is printable A4 sheets kids mark up by hand with markers. The app is a single-page WYSIWYG editor: one theme is rendered at full A4 size and every chore/name/XP/reward field is inline-editable on the printed sheet itself. A slim toolbar above the artboard holds the kid switcher, theme picker, language, and Print. State auto-persists to the URL hash (shareable) and to `localStorage` keyed by kid name.
+Kids tracking is a gamified chore/learning dashboard for two kids ages 10-12. Output is printable A4 sheets kids mark up by hand with markers. The app is a single-page WYSIWYG editor: one theme is rendered at full A4 size and every chore/name/XP/reward field is inline-editable on the printed sheet itself. A slim toolbar above the artboard holds the kid dropdown, theme picker, language, and Print. State auto-persists to the URL hash (shareable) and to `localStorage` keyed by kid name.
 
 Languages supported: English, Russian, Dutch. All UI strings live in `src/i18n.tsx`. Never hard-code copy in a variant file.
 
@@ -40,7 +40,7 @@ Languages supported: English, Russian, Dutch. All UI strings live in `src/i18n.t
 ## Entry Points
 
 - `src/index.html` + `src/main.tsx`: WYSIWYG single-theme app shell with toolbar, persisted state, and inline editing.
-- `src/toolbar.tsx`: top toolbar (kid switcher with `<datalist>`, theme select, language select, Print button). Hidden via `@media print`.
+- `src/toolbar.tsx`: top toolbar (kid `<select>` with an "Add new kid..." modal, theme select, language select, Print button). Hidden via `@media print`.
 - `src/state.tsx`: `ChoreState` type, URL-safe base64 codec (`encodeState` / `decodeState`), per-kid `localStorage` adapter (`loadKidState` / `saveKidState` / `listKids` / `loadLastKid`), and the `useChoreState` hook (URL hash mirror debounced 200ms, fallback to last-kid storage, then to defaults).
 - `src/inline.tsx`: `InlineText`, `InlineNumber`, `InlineAddRow`, `InlineRemoveButton` primitives. The `.cc-edit` style block is injected once via `useEffect`; the `.cc-edit-ui` class hides + / × buttons in print.
 - Whenever a new variant is added, register it in `src/main.tsx`'s theme map.
@@ -100,7 +100,7 @@ Inline edits must not change layout height. Use `contentEditable` + `min-width`;
 - URL hash: state is JSON-stringified, base64url-encoded (no padding, `-`/`_` alphabet) and written to `location.hash` via `useChoreState` debounced 200ms. Reload restores from hash.
 - localStorage: each kid's state is saved under `chorecraft:kid:<name>`. The most recently used kid is tracked under `chorecraft:lastKid`.
 - Resolution order on mount: URL hash → last-kid storage → defaults from `DEFAULT_CHORES[lang]`.
-- Switching kids in the toolbar persists the current state under the old kid name first, then loads the new kid (or seeds defaults).
+- Switching kids in the toolbar dropdown persists the current state under the old kid name first, then loads the new kid. Choosing "Add new kid..." opens a modal and seeds defaults for the new name.
 
 ## Printing
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { LANGS, THEMES, TOOLBAR_CSS, Toolbar } from './toolbar';
+import { ADD_KID_VALUE, LANGS, THEMES, TOOLBAR_CSS, Toolbar } from './toolbar';
 
 const noop = () => {};
 
@@ -17,14 +17,24 @@ const baseProps = {
 };
 
 describe('Toolbar render', () => {
-  test('renders kid input wired to a datalist of known kids', () => {
+  test('renders kid select with known kids and add-new option', () => {
     const html = renderToStaticMarkup(<Toolbar {...baseProps} />);
-    expect(html.toLowerCase()).toContain('list="cc-kids"');
-    expect(html).toContain('<datalist id="cc-kids">');
-    expect(html).toContain('<option value="Alex"');
+    expect(html).toContain('<select');
+    expect(html).toContain('class="cc-kid-select"');
+    expect(html).toContain('aria-label="Kid"');
+    expect(html).toMatch(/value="Alex"\s+selected/);
     expect(html).toContain('<option value="Mira"');
-    expect(html).toContain('aria-label="Kid name"');
-    expect(html).toContain('value="Alex"');
+    expect(html).toContain(`value="${ADD_KID_VALUE}"`);
+    expect(html).toContain('Add new kid...');
+    expect(html).not.toContain('<datalist');
+  });
+
+  test('renders add-kid dialog markup', () => {
+    const html = renderToStaticMarkup(<Toolbar {...baseProps} />);
+    expect(html).toContain('<dialog');
+    expect(html).toContain('class="cc-kid-dialog"');
+    expect(html).toContain('Add new kid');
+    expect(html).toContain('placeholder="Kid name"');
   });
 
   test('renders all six theme options with the active one selected', () => {
@@ -62,9 +72,10 @@ describe('Toolbar render', () => {
 });
 
 describe('Toolbar style sheet', () => {
-  test('hides the toolbar in print and styles inputs/buttons', () => {
+  test('hides the toolbar in print and styles inputs/buttons/dialog', () => {
     expect(TOOLBAR_CSS).toContain('@media print');
     expect(TOOLBAR_CSS).toContain('.cc-toolbar');
+    expect(TOOLBAR_CSS).toContain('.cc-kid-dialog');
     expect(TOOLBAR_CSS).toContain('display:none');
     expect(TOOLBAR_CSS).toContain('position:fixed');
   });
