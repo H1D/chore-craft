@@ -46,6 +46,8 @@ const sampleState = (overrides: Partial<ChoreState> = {}): ChoreState => ({
   reward: 'Pillow fort',
   lang: 'en',
   theme: 'quest-scroll',
+  weekStart: 0,
+  weekCount: 1,
   chores: [
     { name: 'Read 30 min', xp: 20, on: true },
     { name: 'Math practice', xp: 15, on: true },
@@ -123,6 +125,25 @@ describe('codec', () => {
       chores: [{ name: 'Blank XP chore', xp: null, on: true }],
     });
     expect(decodeState(encodeState(s))).toEqual(s);
+  });
+
+  test('defaults missing legacy week settings on load', () => {
+    const legacy = { ...sampleState() } as any;
+    delete legacy.weekStart;
+    delete legacy.weekCount;
+    const decoded = decodeState(encodeState(legacy));
+    expect(decoded).not.toBeNull();
+    expect(decoded!.weekStart).toBe(0);
+    expect(decoded!.weekCount).toBe(1);
+  });
+
+  test('rejects invalid week settings', () => {
+    expect(decodeState(encodeState({ ...sampleState(), weekStart: -1 } as any))).toBeNull();
+    expect(decodeState(encodeState({ ...sampleState(), weekStart: 7 } as any))).toBeNull();
+    expect(decodeState(encodeState({ ...sampleState(), weekStart: 1.5 } as any))).toBeNull();
+    expect(decodeState(encodeState({ ...sampleState(), weekCount: 0 } as any))).toBeNull();
+    expect(decodeState(encodeState({ ...sampleState(), weekCount: 3 } as any))).toBeNull();
+    expect(decodeState(encodeState({ ...sampleState(), weekCount: '2' } as any))).toBeNull();
   });
 
   test('rejects numeric fields outside the UI clamp range (level/xp must be int 1..99)', () => {
@@ -246,6 +267,8 @@ describe('defaultStateForLang', () => {
     expect(s.kid).toBe('Alex');
     expect(s.lang).toBe('en');
     expect(s.theme).toBe('quest-scroll');
+    expect(s.weekStart).toBe(0);
+    expect(s.weekCount).toBe(1);
     expect(s.level).toBe(1);
     expect(s.chores.length).toBeGreaterThan(0);
     for (const c of s.chores) {

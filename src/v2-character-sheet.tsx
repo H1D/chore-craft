@@ -8,7 +8,7 @@ import { CHORE_CAP } from './state';
 function CharacterSheet({ data, lang, edit }) {
   const t = window.I18N[lang];
   const O = window.Ornament;
-  const { heroName, level, levelName, chores, bonus, reward, classTitle } = data;
+  const { heroName, level, levelName, chores, bonus, reward, classTitle, days = t.days } = data;
 
   // Pick a "class" derived from the chores (pure flavor)
   return (
@@ -70,7 +70,7 @@ function CharacterSheet({ data, lang, edit }) {
             chore={c}
             index={i}
             t={t}
-            days={t.days}
+            days={days}
             edit={edit}
           />
         ))}
@@ -81,7 +81,7 @@ function CharacterSheet({ data, lang, edit }) {
               chore={{ name: '________________________', xp: '__' }}
               index={chores.length + i}
               t={t}
-              days={t.days}
+              days={days}
               placeholder
             />
           ))}
@@ -224,10 +224,17 @@ function SkillRow({ chore, index, t, days, placeholder, edit }) {
           <>+{chore.xp}</>
         )}
       </div>
-      <div style={csStyles.skillDays}>
+      <div
+        style={{
+          ...csStyles.skillDays,
+          gridTemplateColumns: `repeat(${days.length}, ${days.length > 7 ? 24 : 32}px)`,
+        }}
+      >
         {days.map((d, i) => (
           <div key={i} style={csStyles.skillDayCell}>
-            <div style={csStyles.skillDayLabel}>{d}</div>
+            <div style={{ ...csStyles.skillDayLabel, fontSize: days.length > 7 ? 6.5 : 7.5 }}>
+              {d}
+            </div>
             <O.Checkbox size={16} color="#3a1f15" />
           </div>
         ))}
@@ -390,6 +397,7 @@ const csStyles = {
     fontFamily: '"Crimson Pro", serif',
     fontSize: 13,
     color: '#1a0f08',
+    minWidth: 0,
   },
   skillBullet: { color: '#7a3a2a', fontSize: 9 },
   skillXp: {

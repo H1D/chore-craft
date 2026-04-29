@@ -8,17 +8,29 @@ import { Toolbar } from './toolbar';
 import {
   CHORE_CAP,
   type Theme,
+  type WeekCount,
   applyKidSwitch,
   defaultStateForLang,
   listKids,
   renameKid,
   useChoreState,
 } from './state';
+import { I18N } from './i18n';
 
 const THEME_COMPONENTS: Record<Theme, React.ComponentType<any>> = {
   'quest-scroll': QuestScroll,
   'character-sheet': CharacterSheet,
 };
+
+function buildDayLabels(lang: keyof typeof I18N, weekStart: number, weekCount: WeekCount): string[] {
+  const days = I18N[lang].days;
+  const rotated = [...days.slice(weekStart), ...days.slice(0, weekStart)];
+  if (weekCount === 1) return rotated;
+  return [
+    ...rotated.map((d) => `1 ${d}`),
+    ...rotated.map((d) => `2 ${d}`),
+  ];
+}
 
 function App() {
   const initialDefaults = React.useMemo(() => defaultStateForLang('en'), []);
@@ -48,6 +60,8 @@ function App() {
       reward: state.reward,
       chores: state.chores.slice(0, CHORE_CAP).map((c) => ({ name: c.name, xp: c.xp })),
       bonus: [] as string[],
+      days: buildDayLabels(state.lang, state.weekStart, state.weekCount),
+      weekCount: state.weekCount,
     }),
     [state],
   );
@@ -109,6 +123,8 @@ function App() {
         kid={state.kid}
         theme={state.theme}
         lang={state.lang}
+        weekStart={state.weekStart}
+        weekCount={state.weekCount}
         knownKids={knownKids}
         highlightFields={highlightFields}
         onKidCommit={(v) => {
@@ -120,6 +136,8 @@ function App() {
         }}
         onThemeChange={(v) => setState((prev) => ({ ...prev, theme: v }))}
         onLangChange={(v) => setState((prev) => ({ ...prev, lang: v }))}
+        onWeekStartChange={(v) => setState((prev) => ({ ...prev, weekStart: v }))}
+        onWeekCountChange={(v) => setState((prev) => ({ ...prev, weekCount: v }))}
         onHighlightFieldsChange={setHighlightFields}
         onPrint={() => {
           if (typeof window !== 'undefined') window.print();

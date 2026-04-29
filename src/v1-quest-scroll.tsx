@@ -9,7 +9,8 @@ import { CHORE_CAP } from './state';
 function QuestScroll({ data, lang, edit }) {
   const t = window.I18N[lang];
   const O = window.Ornament;
-  const { heroName, level, levelName, chores, bonus, reward } = data;
+  const { heroName, level, levelName, chores, bonus, reward, days = t.days } = data;
+  const longQuestHeader = days.length > 7;
 
   return (
     <div style={qsStyles.page}>
@@ -88,14 +89,30 @@ function QuestScroll({ data, lang, edit }) {
         <table style={qsStyles.questTable}>
           <thead>
             <tr>
-              <th style={{ ...qsStyles.th, width: '38%', textAlign: 'left', paddingLeft: 12 }}>
+              <th
+                style={{
+                  ...qsStyles.th,
+                  width: longQuestHeader ? '31%' : '38%',
+                  textAlign: 'left',
+                  paddingLeft: 12,
+                }}
+              >
                 Quest
               </th>
-              <th style={{ ...qsStyles.th, width: '8%' }}>XP</th>
-              {t.days.map((d, i) => (
-                <th key={i} style={qsStyles.th}>{d}</th>
+              <th style={{ ...qsStyles.th, width: longQuestHeader ? '7%' : '8%' }}>XP</th>
+              {days.map((d, i) => (
+                <th
+                  key={i}
+                  style={
+                    longQuestHeader
+                      ? { ...qsStyles.th, fontSize: 7.5, letterSpacing: '0.02em' }
+                      : qsStyles.th
+                  }
+                >
+                  {d}
+                </th>
               ))}
-              <th style={{ ...qsStyles.th, width: '7%' }}>Σ</th>
+              <th style={{ ...qsStyles.th, width: longQuestHeader ? '6%' : '7%' }}>Σ</th>
             </tr>
           </thead>
           <tbody>
@@ -127,9 +144,9 @@ function QuestScroll({ data, lang, edit }) {
                     ariaLabel={`Quest ${i + 1} XP`}
                   />
                 </td>
-                {t.days.map((_, di) => (
+                {days.map((_, di) => (
                   <td key={di} style={qsStyles.tdCheck}>
-                    <O.Checkbox size={20} color="#5a2a1f" />
+                    <O.Checkbox size={longQuestHeader ? 18 : 20} color="#5a2a1f" />
                   </td>
                 ))}
                 <td style={qsStyles.tdSum}></td>
@@ -143,9 +160,9 @@ function QuestScroll({ data, lang, edit }) {
                   <span style={{ ...qsStyles.questName, opacity: 0.25 }}>_______________________</span>
                 </td>
                 <td style={qsStyles.tdXp}>+__</td>
-                {t.days.map((_, di) => (
+                {days.map((_, di) => (
                   <td key={di} style={qsStyles.tdCheck}>
-                    <O.Checkbox size={20} color="#5a2a1f" />
+                    <O.Checkbox size={longQuestHeader ? 18 : 20} color="#5a2a1f" />
                   </td>
                 ))}
                 <td style={qsStyles.tdSum}></td>
@@ -154,7 +171,7 @@ function QuestScroll({ data, lang, edit }) {
             {/* Edit mode: trailing add-row button, hidden when at chore cap */}
             {edit && chores.length < CHORE_CAP && (
               <tr style={qsStyles.tr}>
-                <td style={qsStyles.tdQuest} colSpan={2 + t.days.length + 1}>
+                <td style={qsStyles.tdQuest} colSpan={2 + days.length + 1}>
                   <InlineAddRow onAdd={edit.addChore} label="Add quest" />
                 </td>
               </tr>

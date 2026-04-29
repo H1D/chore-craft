@@ -15,6 +15,7 @@ import React from 'react';
 export type Theme = 'quest-scroll' | 'character-sheet';
 
 export type Lang = 'en' | 'ru' | 'nl';
+export type WeekCount = 1 | 2;
 
 export interface Chore {
   name: string;
@@ -30,6 +31,8 @@ export interface ChoreState {
   reward: string;
   lang: Lang;
   theme: Theme;
+  weekStart: number;
+  weekCount: WeekCount;
   chores: Chore[];
 }
 
@@ -64,6 +67,7 @@ const VALID_THEMES: ReadonlySet<Theme> = new Set<Theme>([
   'character-sheet',
 ]);
 const LEGACY_THEMES = new Set(['dungeon-map', 'minecraft', 'roblox', 'toca-boca']);
+const VALID_WEEK_COUNTS: ReadonlySet<WeekCount> = new Set<WeekCount>([1, 2]);
 
 // Numeric ranges mirror the UI clamps in EditableNumber (level + chore XP both
 // live in 1..99). decodeState/loadKidState are the trust boundary for hash
@@ -88,6 +92,16 @@ function normalizeTheme(v: unknown): Theme | null {
   return null;
 }
 
+function normalizeWeekStart(v: unknown): number | null {
+  if (typeof v === 'undefined') return 0;
+  return isIntInRange(v, 0, 6) ? v : null;
+}
+
+function normalizeWeekCount(v: unknown): WeekCount | null {
+  if (typeof v === 'undefined') return 1;
+  return VALID_WEEK_COUNTS.has(v as WeekCount) ? (v as WeekCount) : null;
+}
+
 function normalizeChoreState(v: unknown): ChoreState | null {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
   const o = v as Record<string, unknown>;
@@ -99,6 +113,10 @@ function normalizeChoreState(v: unknown): ChoreState | null {
   if (typeof o.lang !== 'string' || !VALID_LANGS.has(o.lang as Lang)) return null;
   const theme = normalizeTheme(o.theme);
   if (!theme) return null;
+  const weekStart = normalizeWeekStart(o.weekStart);
+  if (weekStart === null) return null;
+  const weekCount = normalizeWeekCount(o.weekCount);
+  if (weekCount === null) return null;
   if (!Array.isArray(o.chores)) return null;
   // Cap matches the UI's add-button limit (CHORE_CAP). A crafted hash or
   // corrupted blob with thousands of entries would otherwise round-trip
@@ -121,6 +139,8 @@ function normalizeChoreState(v: unknown): ChoreState | null {
     reward: o.reward,
     lang: o.lang as Lang,
     theme,
+    weekStart,
+    weekCount,
     chores,
   };
 }
@@ -282,6 +302,8 @@ export function defaultStateForLang(lang: Lang, kid: string = ''): ChoreState {
     reward: '',
     lang,
     theme: 'quest-scroll',
+    weekStart: 0,
+    weekCount: 1,
     chores: getStarterChores(lang).map((c) => ({ name: c.name, xp: c.xp, on: true })),
   };
 }

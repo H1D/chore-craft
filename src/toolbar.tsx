@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Lang, Theme } from './state';
+import type { Lang, Theme, WeekCount } from './state';
 import { I18N } from './i18n';
 
 // toolbar.tsx
@@ -18,6 +18,8 @@ export const LANGS: { value: Lang; label: string }[] = [
   { value: 'ru', label: 'Русский' },
   { value: 'nl', label: 'Nederlands' },
 ];
+
+const WEEK_STARTS = [0, 1, 2, 3, 4, 5, 6];
 
 export const TOOLBAR_STYLE_ID = 'cc-toolbar-styles';
 export const ADD_KID_VALUE = '__cc_add_kid__';
@@ -69,11 +71,15 @@ export interface ToolbarProps {
   kid: string;
   theme: Theme;
   lang: Lang;
+  weekStart: number;
+  weekCount: WeekCount;
   knownKids: string[];
   highlightFields: boolean;
   onKidCommit: (next: string) => boolean;
   onThemeChange: (next: Theme) => void;
   onLangChange: (next: Lang) => void;
+  onWeekStartChange: (next: number) => void;
+  onWeekCountChange: (next: WeekCount) => void;
   onHighlightFieldsChange: (next: boolean) => void;
   onPrint: () => void;
 }
@@ -82,11 +88,15 @@ export function Toolbar({
   kid,
   theme,
   lang,
+  weekStart,
+  weekCount,
   knownKids,
   highlightFields,
   onKidCommit,
   onThemeChange,
   onLangChange,
+  onWeekStartChange,
+  onWeekCountChange,
   onHighlightFieldsChange,
   onPrint,
 }: ToolbarProps) {
@@ -190,6 +200,33 @@ export function Toolbar({
                 {l.label}
               </option>
             ))}
+          </select>
+        </label>
+
+        <label>
+          {copy.weekStart}
+          <select
+            value={weekStart}
+            aria-label={copy.weekStart}
+            onChange={(e) => onWeekStartChange(Number(e.target.value))}
+          >
+            {WEEK_STARTS.map((i) => (
+              <option key={i} value={i}>
+                {I18N[lang].daysLong[i]}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          {copy.weeks}
+          <select
+            value={weekCount}
+            aria-label={copy.weeks}
+            onChange={(e) => onWeekCountChange(Number(e.target.value) as WeekCount)}
+          >
+            <option value={1}>{copy.oneWeek}</option>
+            <option value={2}>{copy.twoWeeks}</option>
           </select>
         </label>
 

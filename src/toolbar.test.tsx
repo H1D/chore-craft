@@ -9,11 +9,15 @@ const baseProps = {
   kid: 'Alex',
   theme: 'quest-scroll' as const,
   lang: 'en' as const,
+  weekStart: 0,
+  weekCount: 1 as const,
   knownKids: ['Alex', 'Mira'],
   highlightFields: false,
   onKidCommit: noop,
   onThemeChange: noop,
   onLangChange: noop,
+  onWeekStartChange: noop,
+  onWeekCountChange: noop,
   onHighlightFieldsChange: noop,
   onPrint: noop,
 };
@@ -59,6 +63,16 @@ describe('Toolbar render', () => {
       expect(html).toContain(l.label);
     }
     expect(html).toMatch(/value="ru"\s+selected/);
+  });
+
+  test('renders week start and week count controls', () => {
+    const html = renderToStaticMarkup(<Toolbar {...baseProps} weekStart={6} weekCount={2} />);
+    expect(html).toContain('aria-label="Week starts"');
+    expect(html).toContain('aria-label="Weeks"');
+    expect(html).toMatch(/value="6"\s+selected/);
+    expect(html).toMatch(/value="2"\s+selected/);
+    expect(html).toContain('Sunday');
+    expect(html).toContain('2 weeks');
   });
 
   test('renders a Print button', () => {

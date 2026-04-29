@@ -4,7 +4,7 @@ Persistent context for agents working on this project.
 
 ## Project at a Glance
 
-Kids tracking is a gamified chore/learning dashboard for two kids ages 10-12. Output is printable A4 sheets kids mark up by hand with markers. The app is a single-page WYSIWYG editor: one theme is rendered at full A4 size and every chore/name/XP/reward field is inline-editable on the printed sheet itself. A slim toolbar above the artboard holds the kid dropdown, theme picker, language, and Print. State auto-persists to the URL hash (shareable) and to `localStorage` keyed by kid name.
+Kids tracking is a gamified chore/learning dashboard for two kids ages 10-12. Output is printable A4 sheets kids mark up by hand with markers. The app is a single-page WYSIWYG editor: one theme is rendered at full A4 size and every chore/name/XP/reward field is inline-editable on the printed sheet itself. A slim toolbar above the artboard holds the kid dropdown, theme picker, language, week start, week count, highlight toggle, and Print. State auto-persists to the URL hash (shareable) and to `localStorage` keyed by kid name.
 
 Languages supported: English, Russian, Dutch. All UI strings live in `src/i18n.tsx`. Never hard-code copy in a variant file.
 
@@ -40,7 +40,7 @@ Languages supported: English, Russian, Dutch. All UI strings live in `src/i18n.t
 ## Entry Points
 
 - `src/index.html` + `src/main.tsx`: WYSIWYG single-theme app shell with toolbar, persisted state, and inline editing.
-- `src/toolbar.tsx`: top toolbar (kid `<select>` with an "Add new kid..." modal, theme select, language select, Highlight fields checkbox, Print button). Hidden via `@media print`.
+- `src/toolbar.tsx`: top toolbar (kid `<select>` with an "Add new kid..." modal, theme select, language select, week start select, 1/2 week select, Highlight fields checkbox, Print button). Hidden via `@media print`.
 - `src/state.tsx`: `ChoreState` type, URL-safe base64 codec (`encodeState` / `decodeState`), per-kid `localStorage` adapter (`loadKidState` / `saveKidState` / `listKids` / `loadLastKid`), and the `useChoreState` hook (URL hash mirror debounced 200ms, fallback to last-kid storage, then to defaults).
 - `src/inline.tsx`: `InlineText`, `InlineNumber`, `InlineAddRow`, `InlineRemoveButton` primitives. The `.cc-edit` style block is injected once via `useEffect`; the `.cc-edit-ui` class hides + / × buttons in print.
 - Only Quest Scroll and Character Sheet are active themes. Disabled prototype variants may remain in `src/`, but do not register them in `src/main.tsx` or `src/toolbar.tsx` until their layouts are fixed.
@@ -92,6 +92,8 @@ Bonus quests are not editable. They are meant to be blank on the print. Do not a
 Inline edits must not change layout height. Use `contentEditable` + `min-width`; never grow rows past their existing footprint.
 
 The toolbar's Highlight fields checkbox is screen-only. It toggles the `cc-highlight-fields` class on the artboard; print CSS must remove any highlight background/shadow.
+
+Week controls are persisted state: `weekStart` is a zero-based index into `t.days` / `t.daysLong` (0 = Monday for current locales), and `weekCount` is `1 | 2`. Old saved states without these fields must load as Monday + 1 week. When `weekCount` is 2, active variants render 14 day cells with week-number-prefixed labels.
 
 ## Persistence
 
