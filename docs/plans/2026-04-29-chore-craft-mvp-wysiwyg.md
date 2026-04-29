@@ -42,13 +42,13 @@ Convert the POC (Figma-style canvas with 6 variants + Tweaks side panel) into a 
 - Create: `src/state.tsx`
 - Create: `src/state.test.ts`
 
-- [ ] Define `ChoreState` type: `{ kid, level, levelName, classTitle, reward, lang, theme, chores: {name,xp,on}[] }` (drop bonus — it stays empty per AGENTS.md)
-- [ ] Implement `encodeState(state) → string` and `decodeState(string) → state | null` using `JSON.stringify` + `btoa` with URL-safe base64 (`-`/`_`, no padding); decode returns null on any throw
-- [ ] Implement `loadKidState(name)` / `saveKidState(name, state)` against `localStorage` under key `chorecraft:kid:<name>`; `listKids()` returns sorted names; `loadLastKid()` / `saveLastKid(name)` under `chorecraft:lastKid`
-- [ ] Implement `useChoreState(defaults)` React hook: state held in `useState`, mirrored to `location.hash` (debounced 200ms) and to localStorage for the current `kid` name; on mount, prefer hash → fallback to last-kid storage → fallback to defaults
-- [ ] Write `src/state.test.ts`: codec round-trip on a fully-populated state, codec returns null for malformed input, kid storage save/load/list using a polyfilled `localStorage`
-- [ ] Run `bun test src/state.test.ts` — must pass
-- [ ] Run `bun run build` — must succeed
+- [x] Define `ChoreState` type: `{ kid, level, levelName, classTitle, reward, lang, theme, chores: {name,xp,on}[] }` (drop bonus — it stays empty per AGENTS.md)
+- [x] Implement `encodeState(state) → string` and `decodeState(string) → state | null` using `JSON.stringify` + `btoa` with URL-safe base64 (`-`/`_`, no padding); decode returns null on any throw
+- [x] Implement `loadKidState(name)` / `saveKidState(name, state)` against `localStorage` under key `chorecraft:kid:<name>`; `listKids()` returns sorted names; `loadLastKid()` / `saveLastKid(name)` under `chorecraft:lastKid`
+- [x] Implement `useChoreState(defaults)` React hook: state held in `useState`, mirrored to `location.hash` (debounced 200ms) and to localStorage for the current `kid` name; on mount, prefer hash → fallback to last-kid storage → fallback to defaults
+- [x] Write `src/state.test.ts`: codec round-trip on a fully-populated state, codec returns null for malformed input, kid storage save/load/list using a polyfilled `localStorage`
+- [x] Run `bun test src/state.test.ts` — must pass
+- [x] Run `bun run build` — must succeed
 
 ### Task 2: Inline edit primitives
 
