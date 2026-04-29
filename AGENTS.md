@@ -93,7 +93,7 @@ Inline edits must not change layout height. Use `contentEditable` + `min-width`;
 
 The toolbar's Highlight fields checkbox is screen-only. It toggles the `cc-highlight-fields` class on the artboard; print CSS must remove any highlight background/shadow.
 
-Week controls are persisted state: `weekStart` is a zero-based index into `t.days` / `t.daysLong` (0 = Monday for current locales), and `weekCount` is `1 | 2`. Old saved states without these fields must load as Monday + 1 week. When `weekCount` is 2, active variants render 14 day cells with week-number-prefixed labels.
+Week controls are persisted state: `weekStart` is a zero-based index into `t.days` / `t.daysLong` (0 = Monday for current locales), and `weekCount` is `1 | 2`. Old saved states without these fields must load as Monday + 1 week. When `weekCount` is 2, active variants render 14 day cells by repeating the ordered day labels without numbering them.
 
 ## Persistence
 

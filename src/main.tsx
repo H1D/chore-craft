@@ -26,10 +26,7 @@ function buildDayLabels(lang: keyof typeof I18N, weekStart: number, weekCount: W
   const days = I18N[lang].days;
   const rotated = [...days.slice(weekStart), ...days.slice(0, weekStart)];
   if (weekCount === 1) return rotated;
-  return [
-    ...rotated.map((d) => `1 ${d}`),
-    ...rotated.map((d) => `2 ${d}`),
-  ];
+  return [...rotated, ...rotated];
 }
 
 function App() {

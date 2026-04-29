@@ -90,14 +90,14 @@ describe('QuestScroll edit-mode wiring', () => {
     expect(html).toContain('aria-label="Remove quest 7"');
   });
 
-  test('renders supplied day labels for shifted/two-week quest grids', () => {
+  test('renders supplied repeated day labels for shifted/two-week quest grids', () => {
     const html = renderToStaticMarkup(
       React.createElement(QuestScroll, {
-        data: { ...baseData, days: ['1 Sun', '1 Mon', '2 Sun', '2 Mon'] },
+        data: { ...baseData, days: ['Sun', 'Mon', 'Sun', 'Mon'] },
         lang: 'en',
       }),
     );
-    expect(html).toContain('1 Sun');
-    expect(html).toContain('2 Mon');
+    expect((html.match(/Sun/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    expect((html.match(/Mon/g) ?? []).length).toBeGreaterThanOrEqual(2);
   });
 });
