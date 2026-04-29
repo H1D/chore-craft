@@ -197,6 +197,52 @@ export function InlineNumber({ value, min, max, onChange, style, ariaLabel }: In
   );
 }
 
+// ── Edit-aware wrappers ─────────────────────────────────────────────────────
+// In print mode the variants pass no `edit` prop, so `onChange` is undefined
+// and these render plain inert text — keeps callsites in variants tidy.
+
+export interface EditableTextProps {
+  value: string;
+  onChange?: (v: string) => void;
+  style?: React.CSSProperties;
+  ariaLabel?: string;
+}
+
+export function EditableText({ value, onChange, style, ariaLabel }: EditableTextProps) {
+  if (!onChange) return <span style={style}>{value}</span>;
+  return <InlineText value={value} onChange={onChange} style={style} ariaLabel={ariaLabel} />;
+}
+
+export interface EditableNumberProps {
+  value: number;
+  min: number;
+  max: number;
+  onChange?: (v: number) => void;
+  style?: React.CSSProperties;
+  ariaLabel?: string;
+}
+
+export function EditableNumber({
+  value,
+  min,
+  max,
+  onChange,
+  style,
+  ariaLabel,
+}: EditableNumberProps) {
+  if (!onChange) return <span style={style}>{value}</span>;
+  return (
+    <InlineNumber
+      value={value}
+      min={min}
+      max={max}
+      onChange={onChange}
+      style={style}
+      ariaLabel={ariaLabel}
+    />
+  );
+}
+
 // ── InlineAddRow / InlineRemoveButton ───────────────────────────────────────
 
 export interface InlineAddRowProps {

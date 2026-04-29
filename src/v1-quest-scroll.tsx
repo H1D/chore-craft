@@ -1,10 +1,13 @@
 import React from 'react';
+import { EditableNumber, EditableText, InlineAddRow, InlineRemoveButton } from './inline';
 
 // Variation 1: Quest Scroll
 // Parchment scroll layout — quest log with daily checkbox grid + XP bars + reward seal.
 // A4 portrait: 794 × 1123 px
 
-function QuestScroll({ data, lang }) {
+const CHORE_CAP = 7;
+
+function QuestScroll({ data, lang, edit }) {
   const t = window.I18N[lang];
   const O = window.Ornament;
   const { heroName, level, levelName, dateStart, dateEnd, chores, bonus, reward, witness } = data;
@@ -33,12 +36,30 @@ function QuestScroll({ data, lang }) {
         <div style={qsStyles.heroLine}>
           <O.Diamond size={6} color="#7a3a2a" />
           <span style={qsStyles.heroLabel}>{t.heroLabel}</span>
-          <span style={qsStyles.heroName}>{heroName}</span>
+          <EditableText
+            value={heroName}
+            onChange={edit?.setHeroName}
+            ariaLabel="Hero name"
+            style={qsStyles.heroName}
+          />
           <O.Diamond size={6} color="#7a3a2a" />
         </div>
         <h1 style={qsStyles.title}>{t.questLog}</h1>
         <div style={qsStyles.subtitle}>
-          {t.levelLabel} {level} · {levelName}
+          {t.levelLabel}{' '}
+          <EditableNumber
+            value={level}
+            min={1}
+            max={99}
+            onChange={edit?.setLevel}
+            ariaLabel="Level"
+          />{' '}
+          ·{' '}
+          <EditableText
+            value={levelName}
+            onChange={edit?.setLevelName}
+            ariaLabel="Level title"
+          />
         </div>
         <O.Divider width={420} color="#7a3a2a" />
         <div style={qsStyles.dates}>
@@ -82,10 +103,30 @@ function QuestScroll({ data, lang }) {
             {chores.map((c, i) => (
               <tr key={i} style={qsStyles.tr}>
                 <td style={qsStyles.tdQuest}>
+                  {edit && (
+                    <InlineRemoveButton
+                      onRemove={() => edit.removeChore(i)}
+                      label={`Remove quest ${i + 1}`}
+                    />
+                  )}
                   <span style={qsStyles.questNum}>{String(i + 1).padStart(2, '0')}</span>
-                  <span style={qsStyles.questName}>{c.name}</span>
+                  <EditableText
+                    value={c.name}
+                    onChange={edit ? (v: string) => edit.setChoreName(i, v) : undefined}
+                    style={qsStyles.questName}
+                    ariaLabel={`Quest ${i + 1} name`}
+                  />
                 </td>
-                <td style={qsStyles.tdXp}>+{c.xp}</td>
+                <td style={qsStyles.tdXp}>
+                  +
+                  <EditableNumber
+                    value={c.xp}
+                    min={1}
+                    max={99}
+                    onChange={edit ? (v: number) => edit.setChoreXp(i, v) : undefined}
+                    ariaLabel={`Quest ${i + 1} XP`}
+                  />
+                </td>
                 {t.days.map((_, di) => (
                   <td key={di} style={qsStyles.tdCheck}>
                     <O.Checkbox size={20} color="#5a2a1f" />
@@ -94,8 +135,8 @@ function QuestScroll({ data, lang }) {
                 <td style={qsStyles.tdSum}></td>
               </tr>
             ))}
-            {/* Empty rows so the table always feels full */}
-            {Array.from({ length: Math.max(0, 7 - chores.length) }, (_, i) => (
+            {/* Print mode: pad with placeholder rows so the table feels full */}
+            {!edit && Array.from({ length: Math.max(0, CHORE_CAP - chores.length) }, (_, i) => (
               <tr key={`empty-${i}`} style={qsStyles.tr}>
                 <td style={qsStyles.tdQuest}>
                   <span style={qsStyles.questNum}>{String(chores.length + i + 1).padStart(2, '0')}</span>
@@ -110,6 +151,14 @@ function QuestScroll({ data, lang }) {
                 <td style={qsStyles.tdSum}></td>
               </tr>
             ))}
+            {/* Edit mode: trailing add-row button, hidden when at chore cap */}
+            {edit && chores.length < CHORE_CAP && (
+              <tr style={qsStyles.tr}>
+                <td style={qsStyles.tdQuest} colSpan={2 + t.days.length + 1}>
+                  <InlineAddRow onAdd={edit.addChore} label="Add quest" />
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -144,7 +193,16 @@ function QuestScroll({ data, lang }) {
             {t.levelUpReward}
           </div>
           <div style={qsStyles.rewardText}>
-            {reward || <span style={{ opacity: 0.35, fontStyle: 'italic' }}>{t.chosenBy}…</span>}
+            {edit ? (
+              <EditableText
+                value={reward}
+                onChange={edit.setReward}
+                ariaLabel="Reward"
+                style={{ display: 'inline-block', minWidth: '6ch' }}
+              />
+            ) : (
+              reward || <span style={{ opacity: 0.35, fontStyle: 'italic' }}>{t.chosenBy}…</span>
+            )}
           </div>
           <div style={qsStyles.rewardLines}>
             <div style={qsStyles.rewardLine}></div>

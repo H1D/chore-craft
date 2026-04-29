@@ -70,15 +70,15 @@ Convert the POC (Figma-style canvas with 6 variants + Tweaks side panel) into a 
 **Files:**
 - Modify: `src/v1-quest-scroll.tsx`, `src/v2-character-sheet.tsx`, `src/v3-dungeon-map.tsx`, `src/v4-minecraft.tsx`, `src/v5-roblox.tsx`, `src/v6-toca-boca.tsx`
 
-- [ ] Each variant now receives `{ data, lang, edit }` where `edit = { setHeroName, setLevel, setLevelName, setClassTitle, setReward, setChoreName(i,v), setChoreXp(i,v), addChore, removeChore(i) }` (no-ops in print mode)
-- [ ] Replace the hero name span with `<InlineText value={data.heroName} onChange={edit.setHeroName} />`
-- [ ] Replace the level number with `<InlineNumber min={1} max={99} ... />`
-- [ ] Replace level title, class title, reward with `InlineText`
-- [ ] In each variant's quest-table render, wrap the chore name and `+{xp}` cells in inline primitives; add a left-edge `InlineRemoveButton` and a trailing `InlineAddRow` row at the end of the daily quest list (hidden when at chore cap of 7)
-- [ ] Bonus quests stay blank by design (AGENTS.md hard rule) — no inline edit there
-- [ ] Smoke test: snapshot or simple render assertion for one variant proving the edit-mode buttons exist in DOM and disappear when `edit` prop is undefined (print mode)
-- [ ] Run `bun test` — pass
-- [ ] Run `bun run build` — must succeed
+- [x] Each variant now receives `{ data, lang, edit }` where `edit = { setHeroName, setLevel, setLevelName, setClassTitle, setReward, setChoreName(i,v), setChoreXp(i,v), addChore, removeChore(i) }` (no-ops in print mode)
+- [x] Replace the hero name span with `<InlineText value={data.heroName} onChange={edit.setHeroName} />`
+- [x] Replace the level number with `<InlineNumber min={1} max={99} ... />`
+- [x] Replace level title, class title, reward with `InlineText`
+- [x] In each variant's quest-table render, wrap the chore name and `+{xp}` cells in inline primitives; add a left-edge `InlineRemoveButton` and a trailing `InlineAddRow` row at the end of the daily quest list (hidden when at chore cap of 7)
+- [x] Bonus quests stay blank by design (AGENTS.md hard rule) — no inline edit there
+- [x] Smoke test: snapshot or simple render assertion for one variant proving the edit-mode buttons exist in DOM and disappear when `edit` prop is undefined (print mode)
+- [x] Run `bun test` — pass
+- [x] Run `bun run build` — must succeed
 
 ### Task 4: Toolbar (kid / theme / language / print) and single-theme app shell
 
