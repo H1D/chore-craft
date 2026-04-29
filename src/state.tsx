@@ -126,7 +126,7 @@ export function loadKidState(name: string): ChoreState | null {
     const raw = ls.getItem(KID_PREFIX + name);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? (parsed as ChoreState) : null;
+    return isValidChoreState(parsed) ? parsed : null;
   } catch {
     return null;
   }

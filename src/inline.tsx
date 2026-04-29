@@ -189,6 +189,9 @@ export function InlineNumber({ value, min, max, onChange, style, ariaLabel }: In
         const doc = (e.currentTarget as HTMLElement).ownerDocument;
         if (doc && typeof doc.execCommand === 'function') {
           doc.execCommand('insertText', false, cleaned);
+        } else if (e.currentTarget) {
+          (e.currentTarget as HTMLElement).textContent =
+            ((e.currentTarget as HTMLElement).textContent ?? '') + cleaned;
         }
       }}
     >

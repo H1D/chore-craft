@@ -123,6 +123,27 @@ describe('kid storage', () => {
     expect(loadKidState('Nobody')).toBeNull();
   });
 
+  test('loadKidState rejects malformed / partial stored entries', () => {
+    const ls = (globalThis as any).localStorage as Storage;
+    // legacy/partial entry missing required fields → must NOT be cast to ChoreState
+    ls.setItem(KID_PREFIX + 'Legacy', JSON.stringify({ kid: 'Legacy' }));
+    expect(loadKidState('Legacy')).toBeNull();
+    // wrong-shape chores would crash variants on render → must be rejected
+    ls.setItem(
+      KID_PREFIX + 'Bad',
+      JSON.stringify({ ...sampleState({ kid: 'Bad' }), chores: 'oops' }),
+    );
+    expect(loadKidState('Bad')).toBeNull();
+    // not-an-object payloads (numbers, arrays, null) get dropped
+    ls.setItem(KID_PREFIX + 'Num', '42');
+    expect(loadKidState('Num')).toBeNull();
+    ls.setItem(KID_PREFIX + 'Arr', '[]');
+    expect(loadKidState('Arr')).toBeNull();
+    // unparseable JSON also returns null (caught try/catch)
+    ls.setItem(KID_PREFIX + 'Junk', '{not-json');
+    expect(loadKidState('Junk')).toBeNull();
+  });
+
   test('save uses the chorecraft:kid:<name> key', () => {
     saveKidState('Mira', sampleState({ kid: 'Mira' }));
     const raw = (globalThis as any).localStorage.getItem(KID_PREFIX + 'Mira');
