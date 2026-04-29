@@ -100,6 +100,10 @@ function isValidChoreState(v: unknown): v is ChoreState {
   if (typeof o.lang !== 'string' || !VALID_LANGS.has(o.lang as Lang)) return false;
   if (typeof o.theme !== 'string' || !VALID_THEMES.has(o.theme as Theme)) return false;
   if (!Array.isArray(o.chores)) return false;
+  // Cap matches the UI's add-button limit (CHORE_CAP). A crafted hash or
+  // corrupted blob with thousands of entries would otherwise round-trip
+  // through state and re-persist on every effect-side save.
+  if (o.chores.length > CHORE_CAP) return false;
   for (const c of o.chores) {
     if (!c || typeof c !== 'object') return false;
     const ch = c as Record<string, unknown>;
@@ -241,8 +245,19 @@ const FALLBACK_STARTER_CHORES: Record<Lang, { name: string; xp: number }[]> = {
 export function getStarterChores(lang: Lang): { name: string; xp: number }[] {
   const w: any = typeof window !== 'undefined' ? window : null;
   const list = w?.DEFAULT_CHORES?.[lang];
+  // Clamp xp into the same range isValidChoreState enforces, otherwise a
+  // host-injected DEFAULT_CHORES with xp: 0 / NaN / fractional would seed
+  // a default state that fails revalidation on next reload — and silently
+  // get replaced by a fresh FALLBACK on load.
+  const clampXp = (v: unknown): number => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return XP_MIN;
+    return Math.max(XP_MIN, Math.min(XP_MAX, Math.trunc(n)));
+  };
   if (Array.isArray(list) && list.length > 0) {
-    return list.map((c: any) => ({ name: String(c.name ?? ''), xp: Number(c.xp ?? 0) }));
+    return list
+      .slice(0, CHORE_CAP)
+      .map((c: any) => ({ name: String(c.name ?? ''), xp: clampXp(c?.xp) }));
   }
   return FALLBACK_STARTER_CHORES[lang] ?? FALLBACK_STARTER_CHORES.en;
 }

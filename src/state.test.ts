@@ -141,6 +141,18 @@ describe('codec', () => {
       ),
     ).toBeNull();
   });
+
+  test('rejects chores arrays exceeding the UI cap (CHORE_CAP)', () => {
+    // Without this, a crafted hash could persist hundreds of chores: main.tsx
+    // slices to CHORE_CAP for display so the user never sees the tail, but the
+    // storage effect re-saves the full array on every state change.
+    const tooMany = Array.from({ length: 50 }, (_, i) => ({
+      name: `c${i}`,
+      xp: 5,
+      on: true,
+    }));
+    expect(decodeState(encodeState({ ...sampleState(), chores: tooMany }))).toBeNull();
+  });
 });
 
 describe('kid storage', () => {
@@ -235,6 +247,40 @@ describe('defaultStateForLang', () => {
     };
     try {
       expect(getStarterChores('en')).toEqual([{ name: 'Custom chore', xp: 42 }]);
+    } finally {
+      delete (globalThis as any).DEFAULT_CHORES;
+      delete (globalThis as any).window;
+    }
+  });
+
+  test('getStarterChores clamps xp into the validator range and caps length', () => {
+    // A host-injected DEFAULT_CHORES with out-of-range xp would otherwise seed
+    // a default state that fails isValidChoreState on the very next reload.
+    (globalThis as any).window = globalThis;
+    (globalThis as any).DEFAULT_CHORES = {
+      en: [
+        { name: 'Zero xp', xp: 0 },
+        { name: 'Negative xp', xp: -5 },
+        { name: 'Huge xp', xp: 9999 },
+        { name: 'Fractional xp', xp: 1.7 },
+        { name: 'NaN xp', xp: NaN },
+        { name: 'String xp', xp: 'oops' as any },
+        ...Array.from({ length: 20 }, (_, i) => ({ name: `extra${i}`, xp: 5 })),
+      ],
+    };
+    try {
+      const out = getStarterChores('en');
+      // length capped at CHORE_CAP (7)
+      expect(out.length).toBeLessThanOrEqual(7);
+      // every xp is an integer in [1, 99]
+      for (const c of out) {
+        expect(Number.isInteger(c.xp)).toBe(true);
+        expect(c.xp).toBeGreaterThanOrEqual(1);
+        expect(c.xp).toBeLessThanOrEqual(99);
+      }
+      // resulting default state passes the same validator the codec uses
+      const seeded = defaultStateForLang('en', 'Alex');
+      expect(decodeState(encodeState(seeded))).toEqual(seeded);
     } finally {
       delete (globalThis as any).DEFAULT_CHORES;
       delete (globalThis as any).window;
