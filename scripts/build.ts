@@ -7,7 +7,7 @@ const dist = join(root, 'dist');
 
 async function buildEntrypoints() {
   const result = await Bun.build({
-    entrypoints: [join(src, 'main.tsx'), join(src, 'print.tsx')],
+    entrypoints: [join(src, 'main.tsx')],
     outdir: dist,
     target: 'browser',
     format: 'iife',
@@ -28,7 +28,5 @@ await rm(dist, { recursive: true, force: true });
 await mkdir(dist, { recursive: true });
 
 await cp(join(src, 'index.html'), join(dist, 'index.html'));
-await cp(join(src, 'print.html'), join(dist, 'Kids RPG Dashboard-print.html'));
-await cp(join(root, '.design-canvas.state.json'), join(dist, '.design-canvas.state.json'));
 
 await buildEntrypoints();

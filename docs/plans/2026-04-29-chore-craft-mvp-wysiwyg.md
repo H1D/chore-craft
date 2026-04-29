@@ -104,12 +104,12 @@ Convert the POC (Figma-style canvas with 6 variants + Tweaks side panel) into a 
 - Modify: `scripts/build.ts`
 - Delete from main flow: `src/design-canvas.tsx`, `src/tweaks-panel.tsx` (only if no other consumer; otherwise leave on disk untouched — verify with grep before deleting)
 
-- [ ] Print is now triggered from the live page (`window.print()`), so the standalone `print.html` flat-stack is obsolete. Remove the print entrypoint from `scripts/build.ts` and delete `src/print.html` + `src/print.tsx`
-- [ ] Remove the `.design-canvas.state.json` copy from `scripts/build.ts` (no canvas anymore). Also remove the file from repo root if it exists
-- [ ] After grep-confirming nothing else imports them, delete `src/design-canvas.tsx` and `src/tweaks-panel.tsx`
-- [ ] Update test: ensure build still produces only `index.html` + `main.js`
-- [ ] Run `bun test` — pass
-- [ ] Run `bun run build` — must succeed; `dist/` should contain index.html + main.js (+ favicon if any), nothing else
+- [x] Print is now triggered from the live page (`window.print()`), so the standalone `print.html` flat-stack is obsolete. Remove the print entrypoint from `scripts/build.ts` and delete `src/print.html` + `src/print.tsx`
+- [x] Remove the `.design-canvas.state.json` copy from `scripts/build.ts` (no canvas anymore). Also remove the file from repo root if it exists
+- [x] After grep-confirming nothing else imports them, delete `src/design-canvas.tsx` and `src/tweaks-panel.tsx`
+- [x] Update test: ensure build still produces only `index.html` + `main.js`
+- [x] Run `bun test` — pass
+- [x] Run `bun run build` — must succeed; `dist/` should contain index.html + main.js (+ favicon if any), nothing else
 
 ### Task 6: Verify acceptance criteria
 
