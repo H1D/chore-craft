@@ -13,6 +13,7 @@ import {
   renameKid,
   saveKidState,
   saveLastKid,
+  toggleChoreDayMask,
   type ChoreState,
 } from './state';
 
@@ -127,6 +128,35 @@ describe('codec', () => {
     expect(decodeState(encodeState(s))).toEqual(s);
   });
 
+  test('round-trips custom chore day masks and expands 7-day masks to two weeks', () => {
+    const days = Array.from({ length: 14 }, (_, i) => i % 2 === 0);
+    const s = sampleState({
+      chores: [{ name: 'Custom schedule', xp: 10, on: true, days }],
+    });
+    expect(decodeState(encodeState(s))).toEqual(s);
+
+    const seven = decodeState(
+      encodeState({
+        ...sampleState(),
+        chores: [{ name: 'Legacy custom schedule', xp: 10, on: true, days: [true, false, true, false, true, false, true] }],
+      }),
+    );
+    expect(seven!.chores[0].days).toEqual([true, false, true, false, true, false, true, true, false, true, false, true, false, true]);
+  });
+
+  test('rejects invalid chore day masks', () => {
+    expect(
+      decodeState(
+        encodeState({ ...sampleState(), chores: [{ name: 'x', xp: 5, on: true, days: [true, false] }] } as any),
+      ),
+    ).toBeNull();
+    expect(
+      decodeState(
+        encodeState({ ...sampleState(), chores: [{ name: 'x', xp: 5, on: true, days: [true, 'nope'] }] } as any),
+      ),
+    ).toBeNull();
+  });
+
   test('defaults missing legacy week settings on load', () => {
     const legacy = { ...sampleState() } as any;
     delete legacy.weekStart;
@@ -192,6 +222,26 @@ describe('codec', () => {
       on: true,
     }));
     expect(decodeState(encodeState({ ...sampleState(), chores: tooMany }))).toBeNull();
+  });
+});
+
+describe('chore day masks', () => {
+  test('toggleChoreDayMask defaults missing masks to daily and mirrors week two in one-week mode', () => {
+    const days = toggleChoreDayMask(undefined, 2, true);
+    expect(days[2]).toBe(false);
+    expect(days[9]).toBe(false);
+    expect(days.filter(Boolean)).toHaveLength(12);
+  });
+
+  test('toggleChoreDayMask toggles a single cell in two-week mode', () => {
+    const days = toggleChoreDayMask(undefined, 2, false);
+    expect(days[2]).toBe(false);
+    expect(days[9]).toBe(true);
+  });
+
+  test('toggleChoreDayMask ignores out-of-range indexes', () => {
+    expect(toggleChoreDayMask(undefined, -1, true)).toEqual(Array.from({ length: 14 }, () => true));
+    expect(toggleChoreDayMask(undefined, 14, true)).toEqual(Array.from({ length: 14 }, () => true));
   });
 });
 

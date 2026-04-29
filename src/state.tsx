@@ -21,6 +21,7 @@ export interface Chore {
   name: string;
   xp: number | null;
   on: boolean;
+  days?: boolean[];
 }
 
 export interface ChoreState {
@@ -40,6 +41,36 @@ export const KID_PREFIX = 'chorecraft:kid:';
 export const LAST_KID_KEY = 'chorecraft:lastKid';
 export const HASH_DEBOUNCE_MS = 200;
 export const CHORE_CAP = 7;
+export const CHORE_DAY_COUNT = 14;
+
+export function defaultChoreDays(): boolean[] {
+  return Array.from({ length: CHORE_DAY_COUNT }, () => true);
+}
+
+function normalizeChoreDays(v: unknown): boolean[] | undefined | null {
+  if (typeof v === 'undefined') return undefined;
+  if (!Array.isArray(v)) return null;
+  if (v.length !== 7 && v.length !== CHORE_DAY_COUNT) return null;
+  if (!v.every((d) => typeof d === 'boolean')) return null;
+  return v.length === CHORE_DAY_COUNT ? [...v] : [...v, ...v];
+}
+
+export function resolveChoreDays(v: boolean[] | undefined): boolean[] {
+  return normalizeChoreDays(v) ?? defaultChoreDays();
+}
+
+export function toggleChoreDayMask(
+  days: boolean[] | undefined,
+  dayIndex: number,
+  mirrorSecondWeek: boolean,
+): boolean[] {
+  const next = resolveChoreDays(days);
+  if (!isIntInRange(dayIndex, 0, CHORE_DAY_COUNT - 1)) return next;
+  const value = !next[dayIndex];
+  next[dayIndex] = value;
+  if (mirrorSecondWeek && dayIndex < 7) next[dayIndex + 7] = value;
+  return next;
+}
 
 // ── Codec ───────────────────────────────────────────────────────────────────
 
@@ -129,7 +160,9 @@ function normalizeChoreState(v: unknown): ChoreState | null {
     if (typeof ch.name !== 'string') return null;
     if (ch.xp !== null && !isIntInRange(ch.xp, XP_MIN, XP_MAX)) return null;
     if (typeof ch.on !== 'boolean') return null;
-    chores.push({ name: ch.name, xp: ch.xp, on: ch.on });
+    const days = normalizeChoreDays(ch.days);
+    if (days === null) return null;
+    chores.push({ name: ch.name, xp: ch.xp, on: ch.on, ...(days ? { days } : {}) });
   }
   return {
     kid: o.kid,

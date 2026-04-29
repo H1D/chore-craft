@@ -9,8 +9,17 @@ import { CHORE_CAP } from './state';
 function QuestScroll({ data, lang, edit }) {
   const t = window.I18N[lang];
   const O = window.Ornament;
-  const { heroName, level, levelName, chores, bonus, reward, days = t.days } = data;
-  const longQuestHeader = days.length > 7;
+  const {
+    heroName,
+    level,
+    levelName,
+    chores,
+    bonus,
+    reward,
+    dayLabels = t.days,
+    dayIndexes = t.days.map((_, i) => i),
+  } = data;
+  const longQuestHeader = dayLabels.length > 7;
 
   return (
     <div style={qsStyles.page}>
@@ -100,7 +109,7 @@ function QuestScroll({ data, lang, edit }) {
                 Quest
               </th>
               <th style={{ ...qsStyles.th, width: longQuestHeader ? '7%' : '8%' }}>XP</th>
-              {days.map((d, i) => (
+              {dayLabels.map((d, i) => (
                 <th
                   key={i}
                   style={
@@ -144,9 +153,15 @@ function QuestScroll({ data, lang, edit }) {
                     ariaLabel={`Quest ${i + 1} XP`}
                   />
                 </td>
-                {days.map((_, di) => (
+                {dayLabels.map((_, di) => (
                   <td key={di} style={qsStyles.tdCheck}>
-                    <O.Checkbox size={longQuestHeader ? 18 : 20} color="#5a2a1f" />
+                    <DayToggle
+                      O={O}
+                      active={c.days?.[dayIndexes[di] ?? di] !== false}
+                      editable={!!edit?.toggleChoreDay}
+                      size={longQuestHeader ? 18 : 20}
+                      onToggle={() => edit.toggleChoreDay(i, dayIndexes[di] ?? di)}
+                    />
                   </td>
                 ))}
                 <td style={qsStyles.tdSum}></td>
@@ -160,7 +175,7 @@ function QuestScroll({ data, lang, edit }) {
                   <span style={{ ...qsStyles.questName, opacity: 0.25 }}>_______________________</span>
                 </td>
                 <td style={qsStyles.tdXp}>+__</td>
-                {days.map((_, di) => (
+                {dayLabels.map((_, di) => (
                   <td key={di} style={qsStyles.tdCheck}>
                     <O.Checkbox size={longQuestHeader ? 18 : 20} color="#5a2a1f" />
                   </td>
@@ -171,7 +186,7 @@ function QuestScroll({ data, lang, edit }) {
             {/* Edit mode: trailing add-row button, hidden when at chore cap */}
             {edit && chores.length < CHORE_CAP && (
               <tr style={qsStyles.tr}>
-                <td style={qsStyles.tdQuest} colSpan={2 + days.length + 1}>
+                <td style={qsStyles.tdQuest} colSpan={2 + dayLabels.length + 1}>
                   <InlineAddRow onAdd={edit.addChore} label="Add quest" />
                 </td>
               </tr>
@@ -238,6 +253,27 @@ function QuestScroll({ data, lang, edit }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function DayToggle({ O, active, editable, size, onToggle }) {
+  const content = active ? (
+    <O.Checkbox size={size} color="#5a2a1f" />
+  ) : (
+    <span style={qsStyles.inactiveDay}>—</span>
+  );
+  if (!editable) return content;
+  return (
+    <button
+      type="button"
+      className="cc-edit"
+      aria-label={active ? 'Disable chore on this day' : 'Enable chore on this day'}
+      aria-pressed={active}
+      onClick={onToggle}
+      style={qsStyles.dayToggle}
+    >
+      {content}
+    </button>
   );
 }
 
@@ -409,6 +445,30 @@ const qsStyles = {
     padding: '4px 0',
     borderRight: '0.5px dashed rgba(122,58,42,0.2)',
     verticalAlign: 'middle',
+  },
+  dayToggle: {
+    appearance: 'none',
+    border: 0,
+    background: 'transparent',
+    padding: 0,
+    margin: 0,
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 20,
+    minHeight: 20,
+  },
+  inactiveDay: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 18,
+    minHeight: 18,
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 13,
+    color: '#7a3a2a',
+    fontWeight: 600,
   },
   tdSum: {
     borderRight: 'none',

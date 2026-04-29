@@ -6,6 +6,7 @@ import { QuestScroll } from './v1-quest-scroll';
 import { CharacterSheet } from './v2-character-sheet';
 import { Toolbar } from './toolbar';
 import {
+  CHORE_DAY_COUNT,
   CHORE_CAP,
   type Theme,
   type WeekCount,
@@ -13,6 +14,8 @@ import {
   defaultStateForLang,
   listKids,
   renameKid,
+  resolveChoreDays,
+  toggleChoreDayMask,
   useChoreState,
 } from './state';
 import { I18N } from './i18n';
@@ -22,11 +25,22 @@ const THEME_COMPONENTS: Record<Theme, React.ComponentType<any>> = {
   'character-sheet': CharacterSheet,
 };
 
-function buildDayLabels(lang: keyof typeof I18N, weekStart: number, weekCount: WeekCount): string[] {
+function buildDayColumns(
+  lang: keyof typeof I18N,
+  weekStart: number,
+  weekCount: WeekCount,
+): { labels: string[]; indexes: number[] } {
   const days = I18N[lang].days;
-  const rotated = [...days.slice(weekStart), ...days.slice(0, weekStart)];
-  if (weekCount === 1) return rotated;
-  return [...rotated, ...rotated];
+  const labels: string[] = [];
+  const indexes: number[] = [];
+  for (let week = 0; week < weekCount; week++) {
+    for (let offset = 0; offset < 7; offset++) {
+      const day = (weekStart + offset) % 7;
+      labels.push(days[day]);
+      indexes.push(week * 7 + day);
+    }
+  }
+  return { labels, indexes };
 }
 
 function App() {
@@ -49,17 +63,25 @@ function App() {
   // fields actually rendered are populated. Bonus stays empty by AGENTS.md
   // hard rule. Chores are passed through 1:1 so edit-mode indices line up.
   const data = React.useMemo(
-    () => ({
-      heroName: state.kid,
-      level: state.level,
-      levelName: state.levelName,
-      classTitle: state.classTitle,
-      reward: state.reward,
-      chores: state.chores.slice(0, CHORE_CAP).map((c) => ({ name: c.name, xp: c.xp })),
-      bonus: [] as string[],
-      days: buildDayLabels(state.lang, state.weekStart, state.weekCount),
-      weekCount: state.weekCount,
-    }),
+    () => {
+      const dayColumns = buildDayColumns(state.lang, state.weekStart, state.weekCount);
+      return {
+        heroName: state.kid,
+        level: state.level,
+        levelName: state.levelName,
+        classTitle: state.classTitle,
+        reward: state.reward,
+        chores: state.chores.slice(0, CHORE_CAP).map((c) => ({
+          name: c.name,
+          xp: c.xp,
+          days: resolveChoreDays(c.days),
+        })),
+        bonus: [] as string[],
+        dayLabels: dayColumns.labels,
+        dayIndexes: dayColumns.indexes,
+        weekCount: state.weekCount,
+      };
+    },
     [state],
   );
 
@@ -85,6 +107,15 @@ function App() {
         setState((prev) => ({
           ...prev,
           chores: prev.chores.map((c, ci) => (ci === i ? { ...c, xp: v } : c)),
+        })),
+      toggleChoreDay: (i: number, dayIndex: number) =>
+        setState((prev) => ({
+          ...prev,
+          chores: prev.chores.map((c, ci) => {
+            if (ci !== i || dayIndex < 0 || dayIndex >= CHORE_DAY_COUNT) return c;
+            const days = toggleChoreDayMask(c.days, dayIndex, prev.weekCount === 1);
+            return { ...c, days };
+          }),
         })),
       addChore: () =>
         setState((prev) =>

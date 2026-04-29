@@ -93,11 +93,28 @@ describe('QuestScroll edit-mode wiring', () => {
   test('renders supplied repeated day labels for shifted/two-week quest grids', () => {
     const html = renderToStaticMarkup(
       React.createElement(QuestScroll, {
-        data: { ...baseData, days: ['Sun', 'Mon', 'Sun', 'Mon'] },
+        data: { ...baseData, dayLabels: ['Sun', 'Mon', 'Sun', 'Mon'] },
         lang: 'en',
       }),
     );
     expect((html.match(/Sun/g) ?? []).length).toBeGreaterThanOrEqual(2);
     expect((html.match(/Mon/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+
+  test('renders inactive chore days as dashes and active days as checkboxes', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(QuestScroll, {
+        data: {
+          ...baseData,
+          chores: [{ name: 'Piano', xp: 10, days: [true, false] }],
+          dayLabels: ['Mon', 'Tue'],
+          dayIndexes: [0, 1],
+        },
+        lang: 'en',
+      }),
+    );
+    expect(html).toContain('Piano');
+    expect(html).toContain('—');
+    expect(html).toContain('<svg');
   });
 });

@@ -87,6 +87,8 @@ Do not mix these. Each theme keeps its own palette, typography, and border style
 
 Editable fields are: hero name, level number, level title, class title, reward, and each daily quest's name + XP. Daily quest XP is nullable; clearing the XP field stores `null` and prints a blank XP value. Add a quest with the `+` button at the end of the daily quest list (capped at 7). Remove a quest with the row's leading `×` button. Both buttons carry the `cc-edit-ui` class and are hidden via `@media print`.
 
+Each chore may also have an optional `days` mask of 14 booleans (two canonical Monday-first weeks). Missing `days` means the chore is active every day. Active day cells print as empty checkboxes; inactive day cells print as a dash. In edit mode, day cells are clickable screen controls. When the current sheet is in 1-week mode, toggling a weekday should mirror that weekday into week 2 so switching to 2-week mode preserves the same recurring schedule.
+
 Bonus quests are not editable. They are meant to be blank on the print. Do not add inline primitives there.
 
 Inline edits must not change layout height. Use `contentEditable` + `min-width`; never grow rows past their existing footprint.

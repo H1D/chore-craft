@@ -8,7 +8,17 @@ import { CHORE_CAP } from './state';
 function CharacterSheet({ data, lang, edit }) {
   const t = window.I18N[lang];
   const O = window.Ornament;
-  const { heroName, level, levelName, chores, bonus, reward, classTitle, days = t.days } = data;
+  const {
+    heroName,
+    level,
+    levelName,
+    chores,
+    bonus,
+    reward,
+    classTitle,
+    dayLabels = t.days,
+    dayIndexes = t.days.map((_, i) => i),
+  } = data;
 
   // Pick a "class" derived from the chores (pure flavor)
   return (
@@ -62,7 +72,7 @@ function CharacterSheet({ data, lang, edit }) {
       </div>
 
       {/* Skills (chores) */}
-      <SectionHeader O={O} t={t} label={t.skills} sub="Daily" />
+      <SectionHeader O={O} t={t} label={t.skills} sub={t.week} />
       <div style={csStyles.skillsBlock}>
         {chores.map((c, i) => (
           <SkillRow
@@ -70,7 +80,8 @@ function CharacterSheet({ data, lang, edit }) {
             chore={c}
             index={i}
             t={t}
-            days={days}
+            dayLabels={dayLabels}
+            dayIndexes={dayIndexes}
             edit={edit}
           />
         ))}
@@ -81,7 +92,8 @@ function CharacterSheet({ data, lang, edit }) {
               chore={{ name: '________________________', xp: '__' }}
               index={chores.length + i}
               t={t}
-              days={days}
+              dayLabels={dayLabels}
+              dayIndexes={dayIndexes}
               placeholder
             />
           ))}
@@ -183,10 +195,11 @@ function SectionHeader({ O, t, label, sub }) {
   );
 }
 
-function SkillRow({ chore, index, t, days, placeholder, edit }) {
+function SkillRow({ chore, index, t, dayLabels, dayIndexes, placeholder, edit }) {
   const O = window.Ornament;
   // proficiency tier dot — for visual richness
   const editable = !!edit && !placeholder;
+  const longDays = dayLabels.length > 7;
   return (
     <div style={csStyles.skillRow}>
       <div style={csStyles.skillName}>
@@ -227,19 +240,45 @@ function SkillRow({ chore, index, t, days, placeholder, edit }) {
       <div
         style={{
           ...csStyles.skillDays,
-          gridTemplateColumns: `repeat(${days.length}, ${days.length > 7 ? 24 : 32}px)`,
+          gridTemplateColumns: `repeat(${dayLabels.length}, ${longDays ? 24 : 32}px)`,
         }}
       >
-        {days.map((d, i) => (
+        {dayLabels.map((d, i) => (
           <div key={i} style={csStyles.skillDayCell}>
-            <div style={{ ...csStyles.skillDayLabel, fontSize: days.length > 7 ? 6.5 : 7.5 }}>
+            <div style={{ ...csStyles.skillDayLabel, fontSize: longDays ? 6.5 : 7.5 }}>
               {d}
             </div>
-            <O.Checkbox size={16} color="#3a1f15" />
+            <DayToggle
+              O={O}
+              active={chore.days?.[dayIndexes[i] ?? i] !== false}
+              editable={!!edit?.toggleChoreDay && !placeholder}
+              onToggle={() => edit.toggleChoreDay(index, dayIndexes[i] ?? i)}
+            />
           </div>
         ))}
       </div>
     </div>
+  );
+}
+
+function DayToggle({ O, active, editable, onToggle }) {
+  const content = active ? (
+    <O.Checkbox size={16} color="#3a1f15" />
+  ) : (
+    <span style={csStyles.inactiveDay}>—</span>
+  );
+  if (!editable) return content;
+  return (
+    <button
+      type="button"
+      className="cc-edit"
+      aria-label={active ? 'Disable chore on this day' : 'Enable chore on this day'}
+      aria-pressed={active}
+      onClick={onToggle}
+      style={csStyles.dayToggle}
+    >
+      {content}
+    </button>
   );
 }
 
@@ -425,6 +464,30 @@ const csStyles = {
     letterSpacing: '0.08em',
     color: '#7a3a2a',
     textTransform: 'uppercase',
+  },
+  dayToggle: {
+    appearance: 'none',
+    border: 0,
+    background: 'transparent',
+    padding: 0,
+    margin: 0,
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 16,
+    minHeight: 16,
+  },
+  inactiveDay: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 16,
+    minHeight: 16,
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 12,
+    color: '#7a3a2a',
+    fontWeight: 700,
   },
   bonusBlock: {
     display: 'grid',
