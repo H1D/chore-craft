@@ -1,16 +1,15 @@
 import React from 'react';
 import { EditableNumber, EditableText, InlineAddRow, InlineRemoveButton } from './inline';
+import { CHORE_CAP } from './state';
 
 // Variation 1: Quest Scroll
 // Parchment scroll layout — quest log with daily checkbox grid + XP bars + reward seal.
 // A4 portrait: 794 × 1123 px
 
-const CHORE_CAP = 7;
-
 function QuestScroll({ data, lang, edit }) {
   const t = window.I18N[lang];
   const O = window.Ornament;
-  const { heroName, level, levelName, dateStart, dateEnd, chores, bonus, reward, witness } = data;
+  const { heroName, level, levelName, chores, bonus, reward } = data;
 
   return (
     <div style={qsStyles.page}>

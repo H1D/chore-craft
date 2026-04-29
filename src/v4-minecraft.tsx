@@ -1,10 +1,9 @@
 import React from 'react';
 import { EditableNumber, EditableText, InlineAddRow, InlineRemoveButton } from './inline';
+import { CHORE_CAP } from './state';
 
 // Variation 4: Minecraft-style — pixel blocks, dirt/stone/grass textures, achievement banners
 // A4 portrait: 794 × 1123 px
-
-const MC_CHORE_CAP = 7;
 
 // Pixel block component — renders a block as a CSS gradient grid using box-shadows
 function PixelBlock({ size = 40, kind = 'grass' }) {
@@ -397,7 +396,7 @@ function Minecraft({ data, lang, edit }) {
               ))}
             </div>
           ))}
-        {edit && chores.length < MC_CHORE_CAP && (
+        {edit && chores.length < CHORE_CAP && (
           <div style={{ ...mcStyles.invRow, gridTemplateColumns: '1fr' }}>
             <InlineAddRow onAdd={edit.addChore} label="Add quest" />
           </div>

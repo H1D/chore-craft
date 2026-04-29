@@ -1,10 +1,9 @@
 import React from 'react';
 import { EditableNumber, EditableText, InlineAddRow, InlineRemoveButton } from './inline';
+import { CHORE_CAP } from './state';
 
 // Variation 3: Dungeon Map — quest map with rooms (each chore × day = one room)
 // A4 portrait: 794 × 1123 px
-
-const DM_CHORE_CAP = 7;
 
 function DungeonMap({ data, lang, edit }) {
   const t = window.I18N[lang];
@@ -75,7 +74,7 @@ function DungeonMap({ data, lang, edit }) {
               placeholder
             />
           ))}
-        {edit && chores.length < DM_CHORE_CAP && (
+        {edit && chores.length < CHORE_CAP && (
           <div style={{ ...dmStyles.row, gridTemplateColumns: '1fr', justifyContent: 'flex-start', padding: '6px 12px' }}>
             <InlineAddRow onAdd={edit.addChore} label="Add quest" />
           </div>

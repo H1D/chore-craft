@@ -1,10 +1,9 @@
 import React from 'react';
 import { EditableNumber, EditableText, InlineAddRow, InlineRemoveButton } from './inline';
+import { CHORE_CAP } from './state';
 
 // Variation 6: Toca Boca-style — soft pastels, rounded shapes, cute friendly characters, sticker-feel
 // A4 portrait: 794 × 1123 px
-
-const TB_CHORE_CAP = 7;
 
 // Cute Toca-style character (round head, big eyes, simple body)
 function TocaCharacter({ size = 130, hairColor = '#6b4226', skinColor = '#fdd9b5', shirtColor = '#ffadc6', dress = false }) {
@@ -288,7 +287,7 @@ function TocaBoca({ data, lang, edit }) {
               ))}
             </div>
           ))}
-        {edit && chores.length < TB_CHORE_CAP && (
+        {edit && chores.length < CHORE_CAP && (
           <div style={{ ...tbStyles.questRow, gridTemplateColumns: '1fr' }}>
             <InlineAddRow onAdd={edit.addChore} label="Add quest" />
           </div>

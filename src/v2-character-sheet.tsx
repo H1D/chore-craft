@@ -1,15 +1,14 @@
 import React from 'react';
 import { EditableNumber, EditableText, InlineAddRow, InlineRemoveButton } from './inline';
+import { CHORE_CAP } from './state';
 
 // Variation 2: Character Sheet — D&D-style stat block
 // A4 portrait: 794 × 1123 px
 
-const CS_CHORE_CAP = 7;
-
 function CharacterSheet({ data, lang, edit }) {
   const t = window.I18N[lang];
   const O = window.Ornament;
-  const { heroName, level, levelName, dateStart, dateEnd, chores, bonus, reward, witness, classTitle } = data;
+  const { heroName, level, levelName, chores, bonus, reward, classTitle } = data;
 
   // Pick a "class" derived from the chores (pure flavor)
   return (
@@ -86,7 +85,7 @@ function CharacterSheet({ data, lang, edit }) {
               placeholder
             />
           ))}
-        {edit && chores.length < CS_CHORE_CAP && (
+        {edit && chores.length < CHORE_CAP && (
           <div style={{ ...csStyles.skillRow, justifyContent: 'flex-start' }}>
             <InlineAddRow onAdd={edit.addChore} label="Add skill" />
           </div>

@@ -15,6 +15,7 @@ import {
   applyKidSwitch,
   defaultStateForLang,
   listKids,
+  renameKid,
   useChoreState,
 } from './state';
 
@@ -51,7 +52,7 @@ function App() {
 
   const edit = React.useMemo(
     () => ({
-      setHeroName: (v: string) => setState((prev) => applyKidSwitch(prev, v)),
+      setHeroName: (v: string) => setState((prev) => renameKid(prev, v)),
       setLevel: (v: number) => setState((prev) => ({ ...prev, level: v })),
       setLevelName: (v: string) => setState((prev) => ({ ...prev, levelName: v })),
       setClassTitle: (v: string) => setState((prev) => ({ ...prev, classTitle: v })),

@@ -64,6 +64,37 @@ export function encodeState(state: ChoreState): string {
   return toUrlSafeB64(bin);
 }
 
+const VALID_LANGS: ReadonlySet<Lang> = new Set<Lang>(['en', 'ru', 'nl']);
+const VALID_THEMES: ReadonlySet<Theme> = new Set<Theme>([
+  'quest-scroll',
+  'character-sheet',
+  'dungeon-map',
+  'minecraft',
+  'roblox',
+  'toca-boca',
+]);
+
+function isValidChoreState(v: unknown): v is ChoreState {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
+  const o = v as Record<string, unknown>;
+  if (typeof o.kid !== 'string') return false;
+  if (typeof o.level !== 'number' || !Number.isFinite(o.level)) return false;
+  if (typeof o.levelName !== 'string') return false;
+  if (typeof o.classTitle !== 'string') return false;
+  if (typeof o.reward !== 'string') return false;
+  if (typeof o.lang !== 'string' || !VALID_LANGS.has(o.lang as Lang)) return false;
+  if (typeof o.theme !== 'string' || !VALID_THEMES.has(o.theme as Theme)) return false;
+  if (!Array.isArray(o.chores)) return false;
+  for (const c of o.chores) {
+    if (!c || typeof c !== 'object') return false;
+    const ch = c as Record<string, unknown>;
+    if (typeof ch.name !== 'string') return false;
+    if (typeof ch.xp !== 'number' || !Number.isFinite(ch.xp)) return false;
+    if (typeof ch.on !== 'boolean') return false;
+  }
+  return true;
+}
+
 export function decodeState(s: string): ChoreState | null {
   try {
     if (!s) return null;
@@ -72,8 +103,7 @@ export function decodeState(s: string): ChoreState | null {
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     const json = new TextDecoder().decode(bytes);
     const parsed = JSON.parse(json);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-    return parsed as ChoreState;
+    return isValidChoreState(parsed) ? parsed : null;
   } catch {
     return null;
   }
@@ -188,6 +218,16 @@ export function defaultStateForLang(lang: Lang, kid: string = ''): ChoreState {
     theme: 'quest-scroll',
     chores: getStarterChores(lang).map((c) => ({ name: c.name, xp: c.xp, on: true })),
   };
+}
+
+// renameKid is a pure rename: only the kid field changes. Used for inline
+// hero-name edits on the sheet, where the user is correcting a typo or
+// renaming the current kid — not switching to a different kid's saved state.
+// The storage effect mirrors the new state under the new key on next render.
+export function renameKid(prev: ChoreState, rawNewKid: string): ChoreState {
+  const next = String(rawNewKid ?? '').trim();
+  if (!next || next === prev.kid) return prev;
+  return { ...prev, kid: next };
 }
 
 // applyKidSwitch persists the previous state under its old kid name, then

@@ -10,6 +10,7 @@ import {
   listKids,
   loadKidState,
   loadLastKid,
+  renameKid,
   saveKidState,
   saveLastKid,
   type ChoreState,
@@ -93,10 +94,21 @@ describe('codec', () => {
     expect(decodeState('')).toBeNull();
     expect(decodeState('not-base64-!!!@@@')).toBeNull();
     expect(decodeState('aGVsbG8=')).toBeNull(); // valid base64 but not JSON
-    expect(decodeState(encodeState({ chores: [] } as any))).not.toBeNull(); // partial-but-object passes
     // arrays at top-level rejected
     const badShape = btoa('[]').replace(/=+$/, '');
     expect(decodeState(badShape)).toBeNull();
+  });
+
+  test('rejects partial / wrong-shape objects (no fields, missing fields, bad types)', () => {
+    expect(decodeState(encodeState({} as any))).toBeNull();
+    expect(decodeState(encodeState({ chores: [] } as any))).toBeNull();
+    // wrong types on each required field
+    expect(decodeState(encodeState({ ...sampleState(), kid: 123 } as any))).toBeNull();
+    expect(decodeState(encodeState({ ...sampleState(), level: '3' } as any))).toBeNull();
+    expect(decodeState(encodeState({ ...sampleState(), lang: 'fr' } as any))).toBeNull();
+    expect(decodeState(encodeState({ ...sampleState(), theme: 'unknown' } as any))).toBeNull();
+    expect(decodeState(encodeState({ ...sampleState(), chores: 'nope' } as any))).toBeNull();
+    expect(decodeState(encodeState({ ...sampleState(), chores: [{ name: 'x' }] } as any))).toBeNull();
   });
 });
 
@@ -175,6 +187,46 @@ describe('defaultStateForLang', () => {
       delete (globalThis as any).DEFAULT_CHORES;
       delete (globalThis as any).window;
     }
+  });
+});
+
+describe('renameKid', () => {
+  test('returns prev unchanged when name is blank or equal', () => {
+    const prev = sampleState({ kid: 'Alex' });
+    expect(renameKid(prev, '   ')).toBe(prev);
+    expect(renameKid(prev, 'Alex')).toBe(prev);
+  });
+
+  test('updates only the kid field, preserving chores and other state', () => {
+    const prev = sampleState({ kid: 'Alex', reward: 'Pillow fort' });
+    const next = renameKid(prev, 'Alec');
+    expect(next.kid).toBe('Alec');
+    expect(next.reward).toBe('Pillow fort');
+    expect(next.chores).toEqual(prev.chores);
+    expect(next.theme).toBe(prev.theme);
+    expect(next.level).toBe(prev.level);
+  });
+
+  test('does not seed defaults or load saved state for the new name', () => {
+    saveKidState('Mira', sampleState({ kid: 'Mira', reward: 'Frietjes' }));
+    const prev = sampleState({ kid: 'Alex', reward: 'Pillow fort' });
+    const next = renameKid(prev, 'Mira');
+    // unlike applyKidSwitch, renameKid does not load Mira's saved reward
+    expect(next.reward).toBe('Pillow fort');
+    expect(next.kid).toBe('Mira');
+  });
+
+  test('does not write to localStorage as a side effect', () => {
+    const prev = sampleState({ kid: 'Alex' });
+    renameKid(prev, 'Bob');
+    // pure helper — storage writes happen only through the useChoreState effect
+    expect(loadKidState('Alex')).toBeNull();
+    expect(loadKidState('Bob')).toBeNull();
+  });
+
+  test('trims surrounding whitespace before applying', () => {
+    const prev = sampleState({ kid: 'Alex' });
+    expect(renameKid(prev, '  Bob  ').kid).toBe('Bob');
   });
 });
 

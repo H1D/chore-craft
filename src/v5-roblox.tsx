@@ -1,10 +1,9 @@
 import React from 'react';
 import { EditableNumber, EditableText, InlineAddRow, InlineRemoveButton } from './inline';
+import { CHORE_CAP } from './state';
 
 // Variation 5: Roblox-style — chunky 3D blocky avatars, vibrant primary palette, robux-coin XP
 // A4 portrait: 794 × 1123 px
-
-const RB_CHORE_CAP = 7;
 
 // Roblox-y blocky avatar (axonometric-ish, with simple shading)
 function BloxAvatar({ size = 110, skin = '#ffe1b8', shirt = '#ff5a3c', pants = '#3a6df0' }) {
@@ -250,7 +249,7 @@ function Roblox({ data, lang, edit }) {
               ))}
             </div>
           ))}
-        {edit && chores.length < RB_CHORE_CAP && (
+        {edit && chores.length < CHORE_CAP && (
           <div style={{ ...rbStyles.questRow, gridTemplateColumns: '1fr' }}>
             <InlineAddRow onAdd={edit.addChore} label="Add quest" />
           </div>
