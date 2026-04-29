@@ -113,9 +113,9 @@ Convert the POC (Figma-style canvas with 6 variants + Tweaks side panel) into a 
 
 ### Task 6: Verify acceptance criteria
 
-- [ ] Run `bun test` — full suite passes
-- [ ] Run `bun run build` — succeeds with no warnings
-- [ ] Run `gitleaks detect --source . --config .gitleaks.toml --no-git --redact --verbose` — clean
+- [x] Run `bun test` — full suite passes
+- [x] Run `bun run build` — succeeds with no warnings
+- [x] Run `gitleaks detect --source . --config .gitleaks.toml --no-git --redact --verbose` — clean
 
 ### Task 7: Update documentation
 
