@@ -506,7 +506,7 @@ const qsStyles = {
     display: 'flex',
     gap: 16,
     alignItems: 'stretch',
-    marginTop: 'auto',
+    marginTop: 34,
   },
   sealWrap: {
     width: 110,

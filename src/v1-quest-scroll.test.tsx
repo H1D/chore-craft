@@ -63,6 +63,15 @@ describe('QuestScroll edit-mode wiring', () => {
     expect(html).not.toContain('null');
   });
 
+  test('keeps the Dutch reward block anchored inside the printable page', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(QuestScroll, { data: baseData, lang: 'nl' }),
+    );
+    expect(html).toContain('Level-Up Beloning');
+    expect(html).toContain('margin-top:34px');
+    expect(html).not.toContain('margin-top:auto');
+  });
+
   test('hides the add-row button when chores hit the cap of 7', () => {
     const fullChores = Array.from({ length: 7 }, (_, i) => ({
       name: `Chore ${i + 1}`,
