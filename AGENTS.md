@@ -4,7 +4,7 @@ Persistent context for agents working on this project.
 
 ## Project at a Glance
 
-Kids tracking is a gamified chore/learning dashboard for two kids ages 10-12. Output is printable A4 sheets kids mark up by hand with markers. Six visual variants are exposed on a design canvas; one of them is what the family actually prints.
+Kids tracking is a gamified chore/learning dashboard for two kids ages 10-12. Output is printable A4 sheets kids mark up by hand with markers. The app is a single-page WYSIWYG editor: one theme is rendered at full A4 size and every chore/name/XP/reward field is inline-editable on the printed sheet itself. A slim toolbar above the artboard holds the kid dropdown, theme picker, language, week start, week count, highlight toggle, and Print. State auto-persists to the URL hash (shareable) and to `localStorage` keyed by kid name.
 
 Languages supported: English, Russian, Dutch. All UI strings live in `src/i18n.tsx`. Never hard-code copy in a variant file.
 
@@ -20,16 +20,18 @@ Languages supported: English, Russian, Dutch. All UI strings live in `src/i18n.t
 ## Current Stack
 
 - Runtime/build: Bun native TypeScript/TSX.
-- Build script: `scripts/build.ts`.
-- Source HTML templates: `src/index.html`, `src/print.html`.
+- Build script: `scripts/build.ts` (single bundle: `index.html` + `main.js`).
+- Source HTML template: `src/index.html`.
 - Built output: `dist/`, ignored by git.
 - Deployment: Cloudflare Pages via Wrangler.
 - Secrets scanning: Gitleaks GitHub Action.
+- Tests: `bun:test` (codec + storage + render smoke tests).
 
 ## File Conventions
 
 - One variant per file: `src/v1-*.tsx` through `src/v6-*.tsx`.
 - Each variant exports its main component and also assigns it to `window` for compatibility, for example `window.QuestScroll = QuestScroll`.
+- Each variant accepts `{ data, lang, edit }`. When `edit` is omitted (print/SSR), inline-edit primitives degrade to plain text.
 - Style objects must be uniquely named per file: `qsStyles`, `csStyles`, `dmStyles`, `mcStyles`, `rbStyles`, `tbStyles`. Never use `const styles = { ... }`.
 - Shared decorative SVG lives in `src/ornaments.tsx`, exported as `Ornament` and assigned to `window.Ornament`.
 - All translation strings live in `src/i18n.tsx`, exported as `I18N` and assigned to `window.I18N`.
@@ -37,13 +39,35 @@ Languages supported: English, Russian, Dutch. All UI strings live in `src/i18n.t
 
 ## Entry Points
 
-- `src/index.html` + `src/main.tsx`: design canvas authoring view. Includes the Tweaks panel.
-- `src/print.html` + `src/print.tsx`: flat stack of all 6 variants for printing.
-- Whenever a new variant is added, register it in both `src/main.tsx` and `src/print.tsx`.
+- `src/index.html` + `src/main.tsx`: WYSIWYG single-theme app shell with toolbar, persisted state, and inline editing.
+- `src/toolbar.tsx`: top toolbar (kid `<select>` with an "Add new kid..." modal, theme select, language select, week start select, 1/2 week select, Highlight fields checkbox, Print button). Hidden via `@media print`.
+- `src/state.tsx`: `ChoreState` type, URL-safe base64 codec (`encodeState` / `decodeState`), per-kid `localStorage` adapter (`loadKidState` / `saveKidState` / `listKids` / `loadLastKid`), and the `useChoreState` hook (URL hash mirror debounced 200ms, fallback to last-kid storage, then to defaults).
+- `src/inline.tsx`: `InlineText`, `InlineNumber`, `InlineAddRow`, `InlineRemoveButton` primitives. The `.cc-edit` style block is injected once via `useEffect`; the `.cc-edit-ui` class hides + / × buttons in print.
+- Only Quest Scroll and Character Sheet are active themes. Disabled prototype variants may remain in `src/`, but do not register them in `src/main.tsx` or `src/toolbar.tsx` until their layouts are fixed.
+
+## File Map
+
+```text
+src/index.html             -> single-page app HTML template
+src/main.tsx               -> app shell: useChoreState + Toolbar + active variant
+src/toolbar.tsx            -> kid / theme / language / print toolbar
+src/state.tsx              -> ChoreState, codec, localStorage, useChoreState hook
+src/inline.tsx             -> inline-edit primitives
+src/i18n.tsx               -> EN / RU / NL strings
+src/ornaments.tsx          -> shared decorative SVG
+src/v1-quest-scroll.tsx    -> variant A
+src/v2-character-sheet.tsx -> variant B
+src/v3-*.tsx through v6-*.tsx -> disabled prototype variants
+src/state.test.ts          -> codec + storage tests
+src/inline.test.tsx        -> commit-helper + render smoke tests
+src/toolbar.test.tsx       -> toolbar SSR shape test
+src/v1-quest-scroll.test.tsx -> variant edit-mode vs print-mode smoke
+scripts/build.ts           -> Bun build script
+```
 
 ## Layout Traps
 
-- Quest tables in v4 Minecraft and v5 Roblox must align header columns with row columns exactly:
+- Disabled quest tables in v4 Minecraft and v5 Roblox must align header columns with row columns exactly before those themes are re-enabled:
   - same `gridTemplateColumns` on header and rows
   - `min-width: 0` plus `text-overflow: ellipsis` on the quest-name cell so long names do not blow out column 1
   - no `aspect-ratio` on grid cells, because it forces square sizing that fights the columns
@@ -56,18 +80,29 @@ Languages supported: English, Russian, Dutch. All UI strings live in `src/i18n.t
 |---|---|---|---|
 | Quest Scroll | Parchment + ink `#7a3a2a`, `#f5e6c8` | Cinzel + Crimson Pro | Hand-drawn, ornamental |
 | Character Sheet | Cream + ink + ruled lines | Cinzel + Crimson Pro | D&D form fields |
-| Dungeon Map | Aged map, warm tan | Crimson Pro | Hand-inked tiles |
-| Minecraft | Sky blue + dirt browns | Press Start 2P + JetBrains Mono | 3px hard edges + offset shadow |
-| Roblox | Bright primary red/blue/yellow | Nunito 800-900 | 4px black border + 6px offset shadow |
-| Toca Boca | Pastels `#ffadc6`, `#ffe17e`, etc. | Baloo 2 | 3px brown border + 5px offset shadow |
 
-Do not mix these. A pastel sticker does not go on the Minecraft sheet.
+Do not mix these. Each theme keeps its own palette, typography, and border style.
 
-## Tweaks Panel
+## Inline Editing
 
-Tweakable fields are language, hero name, level, level title, class title, 7 quest slots with toggle/name/XP, and reward.
+Editable fields are: hero name, level number, level title, class title, reward, and each daily quest's name + XP. Daily quest XP is nullable; clearing the XP field stores `null` and prints a blank XP value. Add a quest with the `+` button at the end of the daily quest list (capped at 7). Remove a quest with the row's leading `×` button. Both buttons carry the `cc-edit-ui` class and are hidden via `@media print`.
 
-Bonus quests are not tweakable. They are meant to be blank on the print. Keep the hint card in the panel reminding the user.
+Each chore may also have an optional `days` mask of 14 booleans (two canonical Monday-first weeks). Missing `days` means the chore is active every day. Active day cells print as empty checkboxes; inactive day cells print as a dash. In edit mode, day cells are clickable screen controls. When the current sheet is in 1-week mode, toggling a weekday should mirror that weekday into week 2 so switching to 2-week mode preserves the same recurring schedule.
+
+Bonus quests are not editable. They are meant to be blank on the print. Do not add inline primitives there.
+
+Inline edits must not change layout height. Use `contentEditable` + `min-width`; never grow rows past their existing footprint.
+
+The toolbar's Highlight fields checkbox is screen-only. It toggles the `cc-highlight-fields` class on the artboard; print CSS must remove any highlight background/shadow.
+
+Week controls are persisted state: `weekStart` is a zero-based index into `t.days` / `t.daysLong` (0 = Monday for current locales), and `weekCount` is `1 | 2`. Old saved states without these fields must load as Monday + 1 week. When `weekCount` is 2, active variants render 14 day cells by repeating the ordered day labels without numbering them.
+
+## Persistence
+
+- URL hash: state is JSON-stringified, base64url-encoded (no padding, `-`/`_` alphabet) and written to `location.hash` via `useChoreState` debounced 200ms. Reload restores from hash.
+- localStorage: each kid's state is saved under `chorecraft:kid:<name>`. The most recently used kid is tracked under `chorecraft:lastKid`.
+- Resolution order on mount: URL hash → last-kid storage → defaults from `DEFAULT_CHORES[lang]`.
+- Switching kids in the toolbar dropdown persists the current state under the old kid name first, then loads the new kid. Choosing "Add new kid..." opens a modal and seeds defaults for the new name.
 
 ## Printing
 
@@ -77,7 +112,7 @@ Build first:
 bun run build
 ```
 
-Then open `dist/Kids RPG Dashboard-print.html`, print A4 portrait, no margins, scale 100%. Each variant is a `.page-wrap` with `page-break-after: always`.
+Open `dist/index.html`, edit fields inline, hit the toolbar's Print button (or `Cmd/Ctrl-P`). Print A4 portrait, no margins, scale 100%. Print CSS hides the toolbar, removes the artboard's shadow, and uses `@page { size: A4 portrait; margin: 0 }` so only the active variant's 794×1123 surface ends up on paper.
 
 ## Add a New Variant
 
@@ -85,14 +120,14 @@ Then open `dist/Kids RPG Dashboard-print.html`, print A4 portrait, no margins, s
 2. Build it at 794 x 1123, fill the page, leave room for marker checkboxes.
 3. Use `t.days`, `t.dailyQuests`, `t.bonusQuests`, `t.levelLabel`, `t.signature`, `t.witness`, etc. from `window.I18N[lang]`.
 4. Bonus quest names and bonus quest XP must be blank fillable lines.
-5. Daily quest XP should be `+{c.xp}` or the variant's equivalent.
+5. Daily quest XP should be `+{c.xp ?? ''}` or the variant's equivalent. Wrap it in nullable `InlineNumber`/`EditableNumber` when `edit` is provided so it stays editable on screen and prints cleanly when `edit` is `undefined`.
 6. Export the component and assign it to `window`.
-7. Register it in both `src/main.tsx` and `src/print.tsx`.
+7. Register it in `src/main.tsx`'s theme map and add an option to the toolbar's theme `<select>`.
 
 ## Localize a New Language
 
 1. Add a top-level key to `I18N` in `src/i18n.tsx`. Mirror the EN object's shape exactly.
-2. Add a tweak option for it in the Tweaks panel language `TweakSelect`.
+2. Add an `<option>` for it in the toolbar's language `<select>` (`src/toolbar.tsx`).
 3. Test that day abbreviations fit in the narrow day columns of v4/v5.
 
 ## Validation
@@ -100,6 +135,7 @@ Then open `dist/Kids RPG Dashboard-print.html`, print A4 portrait, no margins, s
 Run before committing meaningful changes:
 
 ```bash
+bun test
 bun run build
 gitleaks detect --source . --config .gitleaks.toml --no-git --redact --verbose
 go run github.com/rhysd/actionlint/cmd/actionlint@latest .github/workflows/*.yml

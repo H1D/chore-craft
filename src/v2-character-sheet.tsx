@@ -1,12 +1,24 @@
 import React from 'react';
+import { EditableNumber, EditableText, InlineAddRow, InlineRemoveButton } from './inline';
+import { CHORE_CAP } from './state';
 
 // Variation 2: Character Sheet — D&D-style stat block
 // A4 portrait: 794 × 1123 px
 
-function CharacterSheet({ data, lang }) {
+function CharacterSheet({ data, lang, edit }) {
   const t = window.I18N[lang];
   const O = window.Ornament;
-  const { heroName, level, levelName, dateStart, dateEnd, chores, bonus, reward, witness, classTitle } = data;
+  const {
+    heroName,
+    level,
+    levelName,
+    chores,
+    bonus,
+    reward,
+    classTitle,
+    dayLabels = t.days,
+    dayIndexes = t.days.map((_, i) => i),
+  } = data;
 
   // Pick a "class" derived from the chores (pure flavor)
   return (
@@ -15,16 +27,34 @@ function CharacterSheet({ data, lang }) {
       <div style={csStyles.topBar}>
         <div style={csStyles.topLeft}>
           <div style={csStyles.topMicro}>{t.heroLabel}</div>
-          <div style={csStyles.topName}>{heroName}</div>
-          <div style={csStyles.topClass}>{classTitle}</div>
+          <div style={csStyles.topName}>
+            <EditableText value={heroName} onChange={edit?.setHeroName} ariaLabel="Hero name" />
+          </div>
+          <div style={csStyles.topClass}>
+            <EditableText
+              value={classTitle}
+              onChange={edit?.setClassTitle}
+              ariaLabel="Class title"
+            />
+          </div>
         </div>
         <div style={csStyles.topCenter}>
           <O.Swords size={44} color="#3a1f15" />
         </div>
         <div style={csStyles.topRight}>
           <div style={csStyles.topMicro}>{t.levelLabel}</div>
-          <div style={csStyles.topLevel}>{String(level).padStart(2, '0')}</div>
-          <div style={csStyles.topClass}>{levelName}</div>
+          <div style={csStyles.topLevel}>
+            <EditableNumber
+              value={level}
+              min={1}
+              max={99}
+              onChange={edit?.setLevel}
+              ariaLabel="Level"
+            />
+          </div>
+          <div style={csStyles.topClass}>
+            <EditableText value={levelName} onChange={edit?.setLevelName} ariaLabel="Level title" />
+          </div>
         </div>
       </div>
 
@@ -42,14 +72,36 @@ function CharacterSheet({ data, lang }) {
       </div>
 
       {/* Skills (chores) */}
-      <SectionHeader O={O} t={t} label={t.skills} sub="Daily" />
+      <SectionHeader O={O} t={t} label={t.skills} sub={t.week} />
       <div style={csStyles.skillsBlock}>
         {chores.map((c, i) => (
-          <SkillRow key={i} chore={c} t={t} days={t.days} />
+          <SkillRow
+            key={i}
+            chore={c}
+            index={i}
+            t={t}
+            dayLabels={dayLabels}
+            dayIndexes={dayIndexes}
+            edit={edit}
+          />
         ))}
-        {Array.from({ length: Math.max(0, 6 - chores.length) }, (_, i) => (
-          <SkillRow key={`e${i}`} chore={{ name: '________________________', xp: '__' }} t={t} days={t.days} placeholder />
-        ))}
+        {!edit &&
+          Array.from({ length: Math.max(0, 6 - chores.length) }, (_, i) => (
+            <SkillRow
+              key={`e${i}`}
+              chore={{ name: '________________________', xp: '__' }}
+              index={chores.length + i}
+              t={t}
+              dayLabels={dayLabels}
+              dayIndexes={dayIndexes}
+              placeholder
+            />
+          ))}
+        {edit && chores.length < CHORE_CAP && (
+          <div style={{ ...csStyles.skillRow, justifyContent: 'flex-start' }}>
+            <InlineAddRow onAdd={edit.addChore} label="Add skill" />
+          </div>
+        )}
       </div>
 
       {/* Bonus quests */}
@@ -90,7 +142,16 @@ function CharacterSheet({ data, lang }) {
         </div>
         <div style={csStyles.rewardBody}>
           <div style={csStyles.rewardText}>
-            {reward || <span style={{ opacity: 0.35, fontStyle: 'italic' }}>__________________________________________________</span>}
+            {edit ? (
+              <EditableText
+                value={reward}
+                onChange={edit.setReward}
+                ariaLabel="Reward"
+                style={{ display: 'inline-block', minWidth: '8ch' }}
+              />
+            ) : (
+              reward || <span style={{ opacity: 0.35, fontStyle: 'italic' }}>__________________________________________________</span>
+            )}
           </div>
           <div style={csStyles.rewardLine} />
           <div style={csStyles.rewardLine} />
@@ -134,25 +195,90 @@ function SectionHeader({ O, t, label, sub }) {
   );
 }
 
-function SkillRow({ chore, t, days, placeholder }) {
+function SkillRow({ chore, index, t, dayLabels, dayIndexes, placeholder, edit }) {
   const O = window.Ornament;
   // proficiency tier dot — for visual richness
+  const editable = !!edit && !placeholder;
+  const longDays = dayLabels.length > 7;
   return (
     <div style={csStyles.skillRow}>
       <div style={csStyles.skillName}>
+        {editable && (
+          <InlineRemoveButton
+            onRemove={() => edit.removeChore(index)}
+            label={`Remove skill ${index + 1}`}
+          />
+        )}
         <span style={{ ...csStyles.skillBullet, opacity: placeholder ? 0.2 : 1 }}>◆</span>
-        <span style={{ opacity: placeholder ? 0.3 : 1 }}>{chore.name}</span>
+        {editable ? (
+          <EditableText
+            value={chore.name}
+            onChange={(v: string) => edit.setChoreName(index, v)}
+            ariaLabel={`Skill ${index + 1} name`}
+          />
+        ) : (
+          <span style={{ opacity: placeholder ? 0.3 : 1 }}>{chore.name}</span>
+        )}
       </div>
-      <div style={csStyles.skillXp}>+{chore.xp}</div>
-      <div style={csStyles.skillDays}>
-        {days.map((d, i) => (
+      <div style={csStyles.skillXp}>
+        {editable ? (
+          <>
+            +
+            <EditableNumber
+              value={chore.xp}
+              min={1}
+              max={99}
+              nullable
+              onChange={(v: number | null) => edit.setChoreXp(index, v)}
+              ariaLabel={`Skill ${index + 1} XP`}
+            />
+          </>
+        ) : (
+          <>+{chore.xp}</>
+        )}
+      </div>
+      <div
+        style={{
+          ...csStyles.skillDays,
+          gridTemplateColumns: `repeat(${dayLabels.length}, ${longDays ? 24 : 32}px)`,
+        }}
+      >
+        {dayLabels.map((d, i) => (
           <div key={i} style={csStyles.skillDayCell}>
-            <div style={csStyles.skillDayLabel}>{d}</div>
-            <O.Checkbox size={16} color="#3a1f15" />
+            <div style={{ ...csStyles.skillDayLabel, fontSize: longDays ? 6.5 : 7.5 }}>
+              {d}
+            </div>
+            <DayToggle
+              O={O}
+              active={chore.days?.[dayIndexes[i] ?? i] !== false}
+              editable={!!edit?.toggleChoreDay && !placeholder}
+              onToggle={() => edit.toggleChoreDay(index, dayIndexes[i] ?? i)}
+            />
           </div>
         ))}
       </div>
     </div>
+  );
+}
+
+function DayToggle({ O, active, editable, onToggle }) {
+  const content = active ? (
+    <O.Checkbox size={16} color="#3a1f15" />
+  ) : (
+    <span style={csStyles.inactiveDay}>—</span>
+  );
+  if (!editable) return content;
+  return (
+    <button
+      type="button"
+      className="cc-edit"
+      aria-label={active ? 'Disable chore on this day' : 'Enable chore on this day'}
+      aria-pressed={active}
+      onClick={onToggle}
+      style={csStyles.dayToggle}
+    >
+      {content}
+    </button>
   );
 }
 
@@ -310,6 +436,7 @@ const csStyles = {
     fontFamily: '"Crimson Pro", serif',
     fontSize: 13,
     color: '#1a0f08',
+    minWidth: 0,
   },
   skillBullet: { color: '#7a3a2a', fontSize: 9 },
   skillXp: {
@@ -337,6 +464,30 @@ const csStyles = {
     letterSpacing: '0.08em',
     color: '#7a3a2a',
     textTransform: 'uppercase',
+  },
+  dayToggle: {
+    appearance: 'none',
+    border: 0,
+    background: 'transparent',
+    padding: 0,
+    margin: 0,
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 16,
+    minHeight: 16,
+  },
+  inactiveDay: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 16,
+    minHeight: 16,
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 12,
+    color: '#7a3a2a',
+    fontWeight: 700,
   },
   bonusBlock: {
     display: 'grid',
