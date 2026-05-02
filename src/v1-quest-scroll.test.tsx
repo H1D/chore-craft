@@ -72,6 +72,23 @@ describe('QuestScroll edit-mode wiring', () => {
     expect(html).not.toContain('margin-top:auto');
   });
 
+  test('uses compact spacing for two-week reward layouts', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(QuestScroll, {
+        data: {
+          ...baseData,
+          chores: Array.from({ length: 7 }, (_, i) => ({ name: `Quest ${i + 1}`, xp: i + 1 })),
+          dayLabels: ['Пт', 'Сб', 'Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс', 'Пн', 'Вт', 'Ср', 'Чт'],
+          dayIndexes: [4, 5, 6, 0, 1, 2, 3, 11, 12, 13, 7, 8, 9, 10],
+        },
+        lang: 'ru',
+      }),
+    );
+    expect(html).toContain('Награда за уровень');
+    expect(html).toContain('padding:30px 48px 32px');
+    expect(html).toContain('margin-top:14px');
+  });
+
   test('hides the add-row button when chores hit the cap of 7', () => {
     const fullChores = Array.from({ length: 7 }, (_, i) => ({
       name: `Chore ${i + 1}`,
