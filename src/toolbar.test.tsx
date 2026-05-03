@@ -1,20 +1,18 @@
 import { describe, expect, test } from 'bun:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ADD_KID_VALUE, LANGS, THEMES, TOOLBAR_CSS, Toolbar } from './toolbar';
+import { ADD_KID_VALUE, LANGS, TOOLBAR_CSS, Toolbar } from './toolbar';
 
 const noop = () => {};
 
 const baseProps = {
   kid: 'Alex',
-  theme: 'quest-scroll' as const,
   lang: 'en' as const,
   weekStart: 0,
   weekCount: 1 as const,
   knownKids: ['Alex', 'Mira'],
   highlightFields: false,
   onKidCommit: noop,
-  onThemeChange: noop,
   onLangChange: noop,
   onWeekStartChange: noop,
   onWeekCountChange: noop,
@@ -43,25 +41,24 @@ describe('Toolbar render', () => {
     expect(html).toContain('placeholder="Kid name"');
   });
 
-  test('renders both active theme options with the active one selected', () => {
-    const html = renderToStaticMarkup(
-      <Toolbar {...baseProps} theme="character-sheet" />,
-    );
-    for (const t of THEMES) {
-      expect(html).toContain(`value="${t.value}"`);
-      expect(html).toContain(t.label);
-    }
-    // selected="" attribute on the active option
-    expect(THEMES).toHaveLength(2);
-    expect(html).not.toContain('value="minecraft"');
-    expect(html).toMatch(/value="character-sheet"\s+selected/);
+  test('does not render a theme picker because Character Sheet is the only theme', () => {
+    const html = renderToStaticMarkup(<Toolbar {...baseProps} />);
+    expect(html).not.toContain('aria-label="Theme"');
+    expect(html).not.toContain('Quest Scroll');
+    expect(html).not.toContain('Character Sheet');
   });
 
-  test('renders all three language options with the active one selected', () => {
+  test('renders all language options with flags and the active one selected', () => {
     const html = renderToStaticMarkup(<Toolbar {...baseProps} lang="ru" />);
     for (const l of LANGS) {
       expect(html).toContain(l.label);
     }
+    expect(LANGS).toHaveLength(8);
+    expect(html).toContain('🇺🇦 Українська');
+    expect(html).toContain('🇩🇪 Deutsch');
+    expect(html).toContain('🇫🇷 Français');
+    expect(html).toContain('🇪🇸 Español');
+    expect(html).toContain('🇮🇹 Italiano');
     expect(html).toMatch(/value="ru"\s+selected/);
   });
 

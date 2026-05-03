@@ -257,6 +257,10 @@ function SkillRow({ chore, index, t, dayLabels, dayIndexes, placeholder, edit })
           </div>
         ))}
       </div>
+      <div style={csStyles.skillTotalCell}>
+        <div style={csStyles.skillTotalLabel}>{t.total}</div>
+        <div style={csStyles.skillTotalBox} />
+      </div>
     </div>
   );
 }
@@ -423,7 +427,7 @@ const csStyles = {
   },
   skillRow: {
     display: 'grid',
-    gridTemplateColumns: '1fr auto auto',
+    gridTemplateColumns: 'minmax(0, 1fr) auto auto auto',
     gap: 10,
     alignItems: 'center',
     padding: '6px 12px',
@@ -446,6 +450,28 @@ const csStyles = {
     fontWeight: 600,
     minWidth: 36,
     textAlign: 'right',
+  },
+  skillTotalCell: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 1,
+    minWidth: 42,
+  },
+  skillTotalLabel: {
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 6.5,
+    letterSpacing: '0.06em',
+    color: '#7a3a2a',
+    textTransform: 'uppercase',
+    whiteSpace: 'nowrap',
+  },
+  skillTotalBox: {
+    width: 34,
+    height: 16,
+    border: '1px solid #3a1f15',
+    background: 'transparent',
+    boxSizing: 'border-box',
   },
   skillDays: {
     display: 'grid',

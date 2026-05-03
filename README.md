@@ -1,21 +1,20 @@
 # Kids Tracking — RPG Chore & Learning Dashboard
 
-A printable, gamified chore and learning dashboard for kids. Two active visual themes, three languages, edited inline in the browser, marker-friendly when printed.
+A printable, gamified chore and learning dashboard for kids. One active visual theme, eight languages, edited inline in the browser, marker-friendly when printed.
 
 ## What's Inside
 
-Two active A4 portrait dashboards, each 794 x 1123 px and printable on a single sheet. The app shows one of them at a time at full size; the toolbar above the sheet picks which:
+One active A4 portrait dashboard, 794 x 1123 px and printable on a single sheet:
 
 | File | Style | Vibe |
 |---|---|---|
-| `src/v1-quest-scroll.tsx` | A · Quest Scroll | Aged parchment, ink, wax seal |
-| `src/v2-character-sheet.tsx` | B · Character Sheet | D&D-style stat block |
+| `src/v2-character-sheet.tsx` | Character Sheet | D&D-style stat block |
 
-Legacy source files for the other prototype variants remain in `src/`, but they are not registered in the toolbar while their layouts are unstable.
+Legacy source files for prototype variants remain in `src/`, but they are not registered in the app while their layouts are unstable.
 
-All variants share the same data model: hero name, level, daily quests with XP, reward. Bonus quest slots stay blank by design — kids fill them in by hand.
+The sheet data model includes hero name, level, daily quests with XP, per-day checkboxes, blank total boxes, and reward. Bonus quest slots stay blank by design — kids fill them in by hand.
 
-Languages: English, Russian, Dutch.
+Languages: English, Russian, Dutch, Ukrainian, German, French, Spanish, Italian. The language picker uses flag labels in the toolbar; flags are screen-only and do not print on the sheet.
 
 ## Quick Start
 
@@ -29,7 +28,7 @@ Open the local URL printed by `serve`. You'll see one A4 sheet centered under a 
 
 1. Pick a saved kid from the toolbar dropdown, or choose "Add new kid..." and enter a name in the modal.
 2. Click any field on the sheet (hero name, level, quest names, XP, reward) and type to edit. XP can be left blank. Use the `+` row to add a quest, the `×` button to remove one. Click a day cell to turn that chore on/off for that day.
-3. Pick a theme, language, week start day, and either 1 or 2 weeks from the toolbar.
+3. Pick a language, week start day, and either 1 or 2 weeks from the toolbar.
 4. Toggle Highlight fields in the toolbar if you want editable fields marked on screen.
 5. Hit Print (or `Cmd/Ctrl-P`). Only the artboard prints — the toolbar and edit chrome are hidden.
 
@@ -44,13 +43,13 @@ Open the local URL printed by `serve`. You'll see one A4 sheet centered under a 
 ```text
 src/index.html             -> single-page app HTML template
 src/main.tsx               -> app shell: useChoreState + Toolbar + active variant
-src/toolbar.tsx            -> kid / theme / language / print toolbar
+src/toolbar.tsx            -> kid / flag language / week / print toolbar
 src/state.tsx              -> ChoreState, codec, localStorage, useChoreState hook
 src/inline.tsx             -> InlineText / InlineNumber / +Add / ×Remove primitives
-src/i18n.tsx               -> EN / RU / NL strings
+src/i18n.tsx               -> EN / RU / NL / UK / DE / FR / ES / IT strings
 src/ornaments.tsx          -> shared decorative SVG
-src/v1-quest-scroll.tsx    -> variant A
-src/v2-character-sheet.tsx -> variant B
+src/v1-quest-scroll.tsx    -> disabled prototype variant
+src/v2-character-sheet.tsx -> active Character Sheet variant
 src/v3-*.tsx through v6-*.tsx -> disabled prototype variants
 scripts/build.ts           -> Bun build script (single bundle)
 dist/                      -> generated static site, ignored by git
