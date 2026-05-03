@@ -3,13 +3,18 @@ import {
   KID_PREFIX,
   LAST_KID_KEY,
   applyKidSwitch,
+  buildPreviewUrl,
   decodeState,
+  decodePreviewData,
   defaultStateForLang,
+  encodePreviewData,
   encodeState,
   getStarterChores,
   listKids,
   loadKidState,
   loadLastKid,
+  loadPreviewStateFromUrl,
+  PREVIEW_DATA_PARAM,
   renameKid,
   saveKidState,
   saveLastKid,
@@ -229,6 +234,91 @@ describe('codec', () => {
       on: true,
     }));
     expect(decodeState(encodeState({ ...sampleState(), chores: tooMany }))).toBeNull();
+  });
+});
+
+describe('preview URL data', () => {
+  test('round-trips partial prefill data by merging over language defaults', () => {
+    const defaults = defaultStateForLang('en');
+    const encoded = encodePreviewData({
+      kid: 'Mira',
+      lang: 'nl',
+      level: 4,
+      reward: 'Museum trip',
+      weekStart: 2,
+      weekCount: 2,
+      chores: [
+        { name: 'Lees 20 minuten', xp: 15 },
+        { name: 'Piano oefenen', xp: null, days: [true, false, true, false, true, false, false] },
+      ],
+    });
+    expect(encoded).not.toMatch(/[\s#&=]/);
+    const decoded = decodePreviewData(encoded, defaults);
+    expect(decoded).not.toBeNull();
+    expect(decoded!.kid).toBe('Mira');
+    expect(decoded!.lang).toBe('nl');
+    expect(decoded!.level).toBe(4);
+    expect(decoded!.levelName).toBe('');
+    expect(decoded!.reward).toBe('Museum trip');
+    expect(decoded!.weekStart).toBe(2);
+    expect(decoded!.weekCount).toBe(2);
+    expect(decoded!.chores).toEqual([
+      { name: 'Lees 20 minuten', xp: 15, on: true },
+      {
+        name: 'Piano oefenen',
+        xp: null,
+        on: true,
+        days: [true, false, true, false, true, false, false, true, false, true, false, true, false, false],
+      },
+    ]);
+  });
+
+  test('accepts uncompressed JSON keys for easier programmatic links', () => {
+    const encoded = encodePreviewData(
+      { kid: 'Alex', chores: [{ name: 'Read', xp: 10 }] },
+      { compactKeys: false },
+    );
+    const decoded = decodePreviewData(encoded, defaultStateForLang('en'));
+    expect(decoded).not.toBeNull();
+    expect(decoded!.kid).toBe('Alex');
+    expect(decoded!.chores).toEqual([{ name: 'Read', xp: 10, on: true }]);
+  });
+
+  test('rejects malformed or invalid preview payloads', () => {
+    const defaults = defaultStateForLang('en');
+    expect(decodePreviewData('', defaults)).toBeNull();
+    expect(decodePreviewData('not-base64-!!!@@@', defaults)).toBeNull();
+    expect(decodePreviewData(encodePreviewData({ lang: 'xx' as any }), defaults)).toBeNull();
+    expect(decodePreviewData(encodePreviewData({ level: 100 }), defaults)).toBeNull();
+    expect(decodePreviewData(encodePreviewData({ chores: [{ name: 'x', xp: 0 }] }), defaults)).toBeNull();
+    expect(
+      decodePreviewData(
+        encodePreviewData({
+          chores: Array.from({ length: 50 }, (_, i) => ({ name: `c${i}`, xp: 5 })),
+        }),
+        defaults,
+      ),
+    ).toBeNull();
+  });
+
+  test('buildPreviewUrl writes ?data= and strips stale hash state', () => {
+    const url = buildPreviewUrl(
+      { kid: 'Alex', chores: [{ name: 'Math', xp: 20 }] },
+      'https://chorecraft.example/sheet?foo=bar#stale',
+    );
+    const parsed = new URL(url);
+    expect(parsed.searchParams.get('foo')).toBe('bar');
+    expect(parsed.searchParams.get(PREVIEW_DATA_PARAM)).toBeTruthy();
+    expect(parsed.hash).toBe('');
+    const decoded = loadPreviewStateFromUrl(defaultStateForLang('en'), url);
+    expect(decoded).not.toBeNull();
+    expect(decoded!.kid).toBe('Alex');
+    expect(decoded!.chores[0]).toEqual({ name: 'Math', xp: 20, on: true });
+  });
+
+  test('loadPreviewStateFromUrl falls through when no data param exists', () => {
+    expect(loadPreviewStateFromUrl(defaultStateForLang('en'), 'https://example.test/')).toBeNull();
+    expect(loadPreviewStateFromUrl(defaultStateForLang('en'), 'not a url')).toBeNull();
   });
 });
 
