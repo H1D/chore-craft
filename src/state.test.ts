@@ -46,7 +46,7 @@ const sampleState = (overrides: Partial<ChoreState> = {}): ChoreState => ({
   classTitle: 'Apprentice Scholar',
   reward: 'Pillow fort',
   lang: 'en',
-  theme: 'quest-scroll',
+  theme: 'character-sheet',
   weekStart: 0,
   weekCount: 1,
   chores: [
@@ -88,6 +88,13 @@ describe('codec', () => {
     expect(decodeState(encodeState(dutch))).toEqual(dutch);
   });
 
+  test('round-trips every supported language code', () => {
+    for (const lang of ['en', 'ru', 'nl', 'uk', 'de', 'fr', 'es', 'it'] as const) {
+      const s = sampleState({ lang });
+      expect(decodeState(encodeState(s))).toEqual(s);
+    }
+  });
+
   test('uses URL-safe alphabet (no +, /, or =)', () => {
     const encoded = encodeState(sampleState({ reward: '???>>>///+++===' }));
     expect(encoded).not.toMatch(/[+/=]/);
@@ -108,16 +115,16 @@ describe('codec', () => {
     // wrong types on each required field
     expect(decodeState(encodeState({ ...sampleState(), kid: 123 } as any))).toBeNull();
     expect(decodeState(encodeState({ ...sampleState(), level: '3' } as any))).toBeNull();
-    expect(decodeState(encodeState({ ...sampleState(), lang: 'fr' } as any))).toBeNull();
+    expect(decodeState(encodeState({ ...sampleState(), lang: 'xx' } as any))).toBeNull();
     expect(decodeState(encodeState({ ...sampleState(), theme: 'unknown' } as any))).toBeNull();
     expect(decodeState(encodeState({ ...sampleState(), chores: 'nope' } as any))).toBeNull();
     expect(decodeState(encodeState({ ...sampleState(), chores: [{ name: 'x' }] } as any))).toBeNull();
   });
 
-  test('coerces disabled legacy themes to quest-scroll when loading saved data', () => {
+  test('coerces legacy themes to character-sheet when loading saved data', () => {
     const decoded = decodeState(encodeState({ ...sampleState(), theme: 'minecraft' } as any));
     expect(decoded).not.toBeNull();
-    expect(decoded!.theme).toBe('quest-scroll');
+    expect(decoded!.theme).toBe('character-sheet');
     expect(decoded!.kid).toBe('Alex');
   });
 
@@ -316,7 +323,7 @@ describe('defaultStateForLang', () => {
     const s = defaultStateForLang('en', 'Alex');
     expect(s.kid).toBe('Alex');
     expect(s.lang).toBe('en');
-    expect(s.theme).toBe('quest-scroll');
+    expect(s.theme).toBe('character-sheet');
     expect(s.weekStart).toBe(0);
     expect(s.weekCount).toBe(1);
     expect(s.level).toBe(1);
@@ -330,6 +337,15 @@ describe('defaultStateForLang', () => {
 
   test('blank kid is allowed (used for very first mount)', () => {
     expect(defaultStateForLang('ru').kid).toBe('');
+  });
+
+  test('returns starter chores for every supported language', () => {
+    for (const lang of ['en', 'ru', 'nl', 'uk', 'de', 'fr', 'es', 'it'] as const) {
+      const s = defaultStateForLang(lang, 'Alex');
+      expect(s.lang).toBe(lang);
+      expect(s.theme).toBe('character-sheet');
+      expect(s.chores.length).toBeGreaterThan(0);
+    }
   });
 
   test('getStarterChores prefers window.DEFAULT_CHORES when present', () => {

@@ -2,7 +2,6 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './i18n';
 import './ornaments';
-import { QuestScroll } from './v1-quest-scroll';
 import { CharacterSheet } from './v2-character-sheet';
 import { Toolbar } from './toolbar';
 import {
@@ -21,7 +20,6 @@ import {
 import { I18N } from './i18n';
 
 const THEME_COMPONENTS: Record<Theme, React.ComponentType<any>> = {
-  'quest-scroll': QuestScroll,
   'character-sheet': CharacterSheet,
 };
 
@@ -57,7 +55,7 @@ function App() {
     stateRef.current = state;
   }, [state]);
 
-  const ThemeComp = THEME_COMPONENTS[state.theme] ?? QuestScroll;
+  const ThemeComp = THEME_COMPONENTS[state.theme] ?? CharacterSheet;
 
   // The variants share a single `data` shape inherited from the POC; only the
   // fields actually rendered are populated. Bonus stays empty by AGENTS.md
@@ -149,7 +147,6 @@ function App() {
     <React.Fragment>
       <Toolbar
         kid={state.kid}
-        theme={state.theme}
         lang={state.lang}
         weekStart={state.weekStart}
         weekCount={state.weekCount}
@@ -162,7 +159,6 @@ function App() {
           setState(next);
           return true;
         }}
-        onThemeChange={(v) => setState((prev) => ({ ...prev, theme: v }))}
         onLangChange={(v) => setState((prev) => ({ ...prev, lang: v }))}
         onWeekStartChange={(v) => setState((prev) => ({ ...prev, weekStart: v }))}
         onWeekCountChange={(v) => setState((prev) => ({ ...prev, weekCount: v }))}

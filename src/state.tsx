@@ -12,9 +12,9 @@ import React from 'react';
 //     (debounced) and per-kid localStorage, and rehydrates on mount
 //     in priority order: hash → last-kid storage → defaults.
 
-export type Theme = 'quest-scroll' | 'character-sheet';
+export type Theme = 'character-sheet';
 
-export type Lang = 'en' | 'ru' | 'nl';
+export type Lang = 'en' | 'ru' | 'nl' | 'uk' | 'de' | 'fr' | 'es' | 'it';
 export type WeekCount = 1 | 2;
 
 export interface Chore {
@@ -92,12 +92,17 @@ export function encodeState(state: ChoreState): string {
   return toUrlSafeB64(bin);
 }
 
-const VALID_LANGS: ReadonlySet<Lang> = new Set<Lang>(['en', 'ru', 'nl']);
-const VALID_THEMES: ReadonlySet<Theme> = new Set<Theme>([
-  'quest-scroll',
-  'character-sheet',
+const VALID_LANGS: ReadonlySet<Lang> = new Set<Lang>([
+  'en',
+  'ru',
+  'nl',
+  'uk',
+  'de',
+  'fr',
+  'es',
+  'it',
 ]);
-const LEGACY_THEMES = new Set(['dungeon-map', 'minecraft', 'roblox', 'toca-boca']);
+const LEGACY_THEMES = new Set(['quest-scroll', 'dungeon-map', 'minecraft', 'roblox', 'toca-boca']);
 const VALID_WEEK_COUNTS: ReadonlySet<WeekCount> = new Set<WeekCount>([1, 2]);
 
 // Numeric ranges mirror the UI clamps in EditableNumber (level + chore XP both
@@ -118,8 +123,8 @@ function isIntInRange(v: unknown, min: number, max: number): boolean {
 
 function normalizeTheme(v: unknown): Theme | null {
   if (typeof v !== 'string') return null;
-  if (VALID_THEMES.has(v as Theme)) return v as Theme;
-  if (LEGACY_THEMES.has(v)) return 'quest-scroll';
+  if (v === 'character-sheet') return 'character-sheet';
+  if (LEGACY_THEMES.has(v)) return 'character-sheet';
   return null;
 }
 
@@ -304,6 +309,26 @@ const FALLBACK_STARTER_CHORES: Record<Lang, { name: string; xp: number }[]> = {
     { name: 'Lees 30 minuten', xp: 20 },
     { name: 'Bed opmaken', xp: 5 },
   ],
+  uk: [
+    { name: 'Читати 30 хвилин', xp: 20 },
+    { name: 'Застелити ліжко', xp: 5 },
+  ],
+  de: [
+    { name: '30 Minuten lesen', xp: 20 },
+    { name: 'Bett machen', xp: 5 },
+  ],
+  fr: [
+    { name: 'Lire 30 minutes', xp: 20 },
+    { name: 'Faire son lit', xp: 5 },
+  ],
+  es: [
+    { name: 'Leer 30 minutos', xp: 20 },
+    { name: 'Hacer la cama', xp: 5 },
+  ],
+  it: [
+    { name: 'Leggere 30 minuti', xp: 20 },
+    { name: 'Rifare il letto', xp: 5 },
+  ],
 };
 
 export function getStarterChores(lang: Lang): { name: string; xp: number }[] {
@@ -334,7 +359,7 @@ export function defaultStateForLang(lang: Lang, kid: string = ''): ChoreState {
     classTitle: '',
     reward: '',
     lang,
-    theme: 'quest-scroll',
+    theme: 'character-sheet',
     weekStart: 0,
     weekCount: 1,
     chores: getStarterChores(lang).map((c) => ({ name: c.name, xp: c.xp, on: true })),

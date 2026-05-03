@@ -4,15 +4,15 @@ Persistent context for agents working on this project.
 
 ## Project at a Glance
 
-Kids tracking is a gamified chore/learning dashboard for two kids ages 10-12. Output is printable A4 sheets kids mark up by hand with markers. The app is a single-page WYSIWYG editor: one theme is rendered at full A4 size and every chore/name/XP/reward field is inline-editable on the printed sheet itself. A slim toolbar above the artboard holds the kid dropdown, theme picker, language, week start, week count, highlight toggle, and Print. State auto-persists to the URL hash (shareable) and to `localStorage` keyed by kid name.
+Kids tracking is a gamified chore/learning dashboard for two kids ages 10-12. Output is printable A4 sheets kids mark up by hand with markers. The app is a single-page WYSIWYG editor: the Character Sheet theme is rendered at full A4 size and every chore/name/XP/reward field is inline-editable on the printed sheet itself. A slim toolbar above the artboard holds the kid dropdown, flag language picker, week start, week count, highlight toggle, and Print. State auto-persists to the URL hash (shareable) and to `localStorage` keyed by kid name.
 
-Languages supported: English, Russian, Dutch. All UI strings live in `src/i18n.tsx`. Never hard-code copy in a variant file.
+Languages supported: English, Russian, Dutch, Ukrainian, German, French, Spanish, Italian. All UI strings live in `src/i18n.tsx`. Never hard-code copy in a variant file.
 
 ## Hard Rules
 
 - Printable always wins. Every change must survive a B&W laser print at A4 portrait, no margins. No reliance on hover, no JS interactivity in the printed surface, no tiny grayscale gradients that turn to mush.
 - Marker-friendly. Checkboxes, progress bars, XP cells, signature lines = outlined empty boxes. Never pre-filled. The kid fills them in.
-- Bonus quests are blank by design. Do not pre-populate bonus quest names or their XP. Kids write them in. Daily quests do show their XP value, editable via tweaks.
+- Bonus quests are blank by design. Do not pre-populate bonus quest names or their XP. Kids write them in. Daily quests do show their XP value, editable via tweaks. Each daily quest row also has an outlined blank Total column for hand-written totals.
 - A4 dimensions are fixed: every variant root is `width: 794, height: 1123`. Do not change.
 - No emoji in printed surfaces. Use SVG. Emoji rendering varies wildly across browsers and printers.
 - Use Bun for all local scripts and package operations. No Python or `.mjs` scripts unless there is a real constraint.
@@ -30,7 +30,7 @@ Languages supported: English, Russian, Dutch. All UI strings live in `src/i18n.t
 ## File Conventions
 
 - One variant per file: `src/v1-*.tsx` through `src/v6-*.tsx`.
-- Each variant exports its main component and also assigns it to `window` for compatibility, for example `window.QuestScroll = QuestScroll`.
+- Each variant exports its main component and also assigns it to `window` for compatibility, for example `window.CharacterSheet = CharacterSheet`.
 - Each variant accepts `{ data, lang, edit }`. When `edit` is omitted (print/SSR), inline-edit primitives degrade to plain text.
 - Style objects must be uniquely named per file: `qsStyles`, `csStyles`, `dmStyles`, `mcStyles`, `rbStyles`, `tbStyles`. Never use `const styles = { ... }`.
 - Shared decorative SVG lives in `src/ornaments.tsx`, exported as `Ornament` and assigned to `window.Ornament`.
@@ -40,28 +40,28 @@ Languages supported: English, Russian, Dutch. All UI strings live in `src/i18n.t
 ## Entry Points
 
 - `src/index.html` + `src/main.tsx`: WYSIWYG single-theme app shell with toolbar, persisted state, and inline editing.
-- `src/toolbar.tsx`: top toolbar (kid `<select>` with an "Add new kid..." modal, theme select, language select, week start select, 1/2 week select, Highlight fields checkbox, Print button). Hidden via `@media print`.
+- `src/toolbar.tsx`: top toolbar (kid `<select>` with an "Add new kid..." modal, flag language select, week start select, 1/2 week select, Highlight fields checkbox, Print button). Hidden via `@media print`.
 - `src/state.tsx`: `ChoreState` type, URL-safe base64 codec (`encodeState` / `decodeState`), per-kid `localStorage` adapter (`loadKidState` / `saveKidState` / `listKids` / `loadLastKid`), and the `useChoreState` hook (URL hash mirror debounced 200ms, fallback to last-kid storage, then to defaults).
 - `src/inline.tsx`: `InlineText`, `InlineNumber`, `InlineAddRow`, `InlineRemoveButton` primitives. The `.cc-edit` style block is injected once via `useEffect`; the `.cc-edit-ui` class hides + / × buttons in print.
-- Only Quest Scroll and Character Sheet are active themes. Disabled prototype variants may remain in `src/`, but do not register them in `src/main.tsx` or `src/toolbar.tsx` until their layouts are fixed.
+- Only Character Sheet is active. Disabled prototype variants may remain in `src/`, but do not register them in `src/main.tsx` or `src/toolbar.tsx` until their layouts are fixed.
 
 ## File Map
 
 ```text
 src/index.html             -> single-page app HTML template
 src/main.tsx               -> app shell: useChoreState + Toolbar + active variant
-src/toolbar.tsx            -> kid / theme / language / print toolbar
+src/toolbar.tsx            -> kid / flag language / week / print toolbar
 src/state.tsx              -> ChoreState, codec, localStorage, useChoreState hook
 src/inline.tsx             -> inline-edit primitives
-src/i18n.tsx               -> EN / RU / NL strings
+src/i18n.tsx               -> EN / RU / NL / UK / DE / FR / ES / IT strings
 src/ornaments.tsx          -> shared decorative SVG
-src/v1-quest-scroll.tsx    -> variant A
-src/v2-character-sheet.tsx -> variant B
+src/v1-quest-scroll.tsx    -> disabled prototype variant
+src/v2-character-sheet.tsx -> active Character Sheet variant
 src/v3-*.tsx through v6-*.tsx -> disabled prototype variants
 src/state.test.ts          -> codec + storage tests
 src/inline.test.tsx        -> commit-helper + render smoke tests
 src/toolbar.test.tsx       -> toolbar SSR shape test
-src/v1-quest-scroll.test.tsx -> variant edit-mode vs print-mode smoke
+src/v2-character-sheet.test.tsx -> active variant edit-mode vs print-mode smoke
 scripts/build.ts           -> Bun build script
 ```
 
@@ -78,7 +78,6 @@ scripts/build.ts           -> Bun build script
 
 | Variant | Palette | Type | Border style |
 |---|---|---|---|
-| Quest Scroll | Parchment + ink `#7a3a2a`, `#f5e6c8` | Cinzel + Crimson Pro | Hand-drawn, ornamental |
 | Character Sheet | Cream + ink + ruled lines | Cinzel + Crimson Pro | D&D form fields |
 
 Do not mix these. Each theme keeps its own palette, typography, and border style.
@@ -122,7 +121,7 @@ Open `dist/index.html`, edit fields inline, hit the toolbar's Print button (or `
 4. Bonus quest names and bonus quest XP must be blank fillable lines.
 5. Daily quest XP should be `+{c.xp ?? ''}` or the variant's equivalent. Wrap it in nullable `InlineNumber`/`EditableNumber` when `edit` is provided so it stays editable on screen and prints cleanly when `edit` is `undefined`.
 6. Export the component and assign it to `window`.
-7. Register it in `src/main.tsx`'s theme map and add an option to the toolbar's theme `<select>`.
+7. Register it in `src/main.tsx` only when it is ready to become active. Reintroduce a toolbar theme picker only if multiple active themes are explicitly requested.
 
 ## Localize a New Language
 

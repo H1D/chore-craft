@@ -1,22 +1,22 @@
 import React from 'react';
-import type { Lang, Theme, WeekCount } from './state';
+import type { Lang, WeekCount } from './state';
 import { I18N } from './i18n';
 
 // toolbar.tsx
-// Slim top bar for kid switching, theme + language pickers, and Print.
+// Slim top bar for kid switching, language, week controls, and Print.
 // Hidden via @media print so the printed sheet stays clean. The kid selector
 // switches saved kids directly; "add new" opens a dialog so new names commit
 // once instead of polluting localStorage with one entry per character typed.
 
-export const THEMES: { value: Theme; label: string }[] = [
-  { value: 'quest-scroll', label: 'Quest Scroll' },
-  { value: 'character-sheet', label: 'Character Sheet' },
-];
-
 export const LANGS: { value: Lang; label: string }[] = [
-  { value: 'en', label: 'English' },
-  { value: 'ru', label: 'Русский' },
-  { value: 'nl', label: 'Nederlands' },
+  { value: 'en', label: '🇬🇧 English' },
+  { value: 'ru', label: '🇷🇺 Русский' },
+  { value: 'nl', label: '🇳🇱 Nederlands' },
+  { value: 'uk', label: '🇺🇦 Українська' },
+  { value: 'de', label: '🇩🇪 Deutsch' },
+  { value: 'fr', label: '🇫🇷 Français' },
+  { value: 'es', label: '🇪🇸 Español' },
+  { value: 'it', label: '🇮🇹 Italiano' },
 ];
 
 const WEEK_STARTS = [0, 1, 2, 3, 4, 5, 6];
@@ -69,14 +69,12 @@ export function useInjectToolbarStyles(): void {
 
 export interface ToolbarProps {
   kid: string;
-  theme: Theme;
   lang: Lang;
   weekStart: number;
   weekCount: WeekCount;
   knownKids: string[];
   highlightFields: boolean;
   onKidCommit: (next: string) => boolean;
-  onThemeChange: (next: Theme) => void;
   onLangChange: (next: Lang) => void;
   onWeekStartChange: (next: number) => void;
   onWeekCountChange: (next: WeekCount) => void;
@@ -86,14 +84,12 @@ export interface ToolbarProps {
 
 export function Toolbar({
   kid,
-  theme,
   lang,
   weekStart,
   weekCount,
   knownKids,
   highlightFields,
   onKidCommit,
-  onThemeChange,
   onLangChange,
   onWeekStartChange,
   onWeekCountChange,
@@ -170,21 +166,6 @@ export function Toolbar({
               </option>
             ))}
             <option value={ADD_KID_VALUE}>{copy.addKid}</option>
-          </select>
-        </label>
-
-        <label>
-          {copy.theme}
-          <select
-            value={theme}
-            aria-label={copy.theme}
-            onChange={(e) => onThemeChange(e.target.value as Theme)}
-          >
-            {THEMES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
           </select>
         </label>
 
