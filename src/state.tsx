@@ -1,4 +1,8 @@
 import React from 'react';
+import {
+  compressToEncodedURIComponent,
+  decompressFromEncodedURIComponent,
+} from 'lz-string';
 
 // state.tsx
 // Single source of truth for the printable sheet's editable data.
@@ -6,11 +10,13 @@ import React from 'react';
 //   - ChoreState: the shape the sheet renders from and stores.
 //   - encodeState / decodeState: URL-safe base64 codec, used for
 //     `location.hash` so a copied URL reproduces the screen.
+//   - encodePreviewData / loadPreviewStateFromUrl: compact `?data=` seed
+//     URLs for programmatic prefilled-sheet links.
 //   - load/saveKidState, list/load/saveLastKid: per-kid localStorage
 //     persistence keyed by kid name.
 //   - useChoreState: React hook that mirrors state to both hash
 //     (debounced) and per-kid localStorage, and rehydrates on mount
-//     in priority order: hash → last-kid storage → defaults.
+//     in priority order: hash → `?data=` seed → last-kid storage → defaults.
 
 export type Theme = 'character-sheet';
 
@@ -37,11 +43,56 @@ export interface ChoreState {
   chores: Chore[];
 }
 
+export interface PreviewChoreData {
+  name?: string;
+  xp?: number | null;
+  on?: boolean;
+  days?: boolean[];
+}
+
+export interface PreviewData {
+  kid?: string;
+  level?: number;
+  levelName?: string;
+  classTitle?: string;
+  reward?: string;
+  lang?: Lang;
+  theme?: Theme;
+  weekStart?: number;
+  weekCount?: WeekCount;
+  chores?: PreviewChoreData[];
+}
+
+export interface PreviewEncodeOptions {
+  compactKeys?: boolean;
+}
+
 export const KID_PREFIX = 'chorecraft:kid:';
 export const LAST_KID_KEY = 'chorecraft:lastKid';
 export const HASH_DEBOUNCE_MS = 200;
 export const CHORE_CAP = 7;
 export const CHORE_DAY_COUNT = 14;
+export const PREVIEW_DATA_PARAM = 'data';
+export const PREVIEW_KEY_COMPRESSION_MAP: Record<string, string> = {
+  kid: 'k',
+  level: 'l',
+  levelName: 'n',
+  classTitle: 'c',
+  reward: 'r',
+  lang: 'g',
+  theme: 't',
+  weekStart: 's',
+  weekCount: 'w',
+  chores: 'q',
+  name: 'a',
+  xp: 'x',
+  on: 'o',
+  days: 'd',
+};
+
+const PREVIEW_REVERSE_KEY_MAP: Record<string, string> = Object.fromEntries(
+  Object.entries(PREVIEW_KEY_COMPRESSION_MAP).map(([original, short]) => [short, original]),
+);
 
 export function defaultChoreDays(): boolean[] {
   return Array.from({ length: CHORE_DAY_COUNT }, () => true);
@@ -192,6 +243,153 @@ export function decodeState(s: string): ChoreState | null {
     const json = new TextDecoder().decode(bytes);
     const parsed = JSON.parse(json);
     return normalizeChoreState(parsed);
+  } catch {
+    return null;
+  }
+}
+
+function remapPreviewKeys(obj: unknown, map: Record<string, string>): unknown {
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map((item) => remapPreviewKeys(item, map));
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    out[map[key] ?? key] = remapPreviewKeys(value, map);
+  }
+  return out;
+}
+
+export function compressPreviewKeys(obj: unknown): unknown {
+  return remapPreviewKeys(obj, PREVIEW_KEY_COMPRESSION_MAP);
+}
+
+export function restorePreviewKeys(obj: unknown): unknown {
+  return remapPreviewKeys(obj, PREVIEW_REVERSE_KEY_MAP);
+}
+
+export function encodePreviewData(
+  data: PreviewData,
+  options: PreviewEncodeOptions = {},
+): string {
+  const compact = options.compactKeys ?? true;
+  return compressToEncodedURIComponent(JSON.stringify(compact ? compressPreviewKeys(data) : data));
+}
+
+function normalizePreviewString(v: unknown, fallback: string): string | null {
+  if (typeof v === 'undefined') return fallback;
+  return typeof v === 'string' ? v : null;
+}
+
+function normalizePreviewInt(
+  v: unknown,
+  fallback: number,
+  min: number,
+  max: number,
+): number | null {
+  if (typeof v === 'undefined') return fallback;
+  return isIntInRange(v, min, max) ? v : null;
+}
+
+function normalizePreviewChores(v: unknown, fallback: Chore[]): Chore[] | null {
+  if (typeof v === 'undefined') return fallback;
+  if (!Array.isArray(v) || v.length > CHORE_CAP) return null;
+  const chores: Chore[] = [];
+  for (const item of v) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+    const ch = item as Record<string, unknown>;
+    const name = normalizePreviewString(ch.name, '');
+    if (name === null) return null;
+    let xp: number | null;
+    if (typeof ch.xp === 'undefined') xp = null;
+    else if (ch.xp === null) xp = null;
+    else if (isIntInRange(ch.xp, XP_MIN, XP_MAX)) xp = ch.xp;
+    else return null;
+    const on = typeof ch.on === 'undefined' ? true : ch.on;
+    if (typeof on !== 'boolean') return null;
+    const days = normalizeChoreDays(ch.days);
+    if (days === null) return null;
+    chores.push({ name, xp, on, ...(days ? { days } : {}) });
+  }
+  return chores;
+}
+
+function normalizePreviewData(v: unknown, defaults: ChoreState): ChoreState | null {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+  const o = v as Record<string, unknown>;
+  const lang = typeof o.lang === 'undefined' ? defaults.lang : o.lang;
+  if (typeof lang !== 'string' || !VALID_LANGS.has(lang as Lang)) return null;
+  const base = { ...defaultStateForLang(lang as Lang, defaults.kid), theme: defaults.theme };
+  const kid = normalizePreviewString(o.kid, base.kid);
+  const levelName = normalizePreviewString(o.levelName, base.levelName);
+  const classTitle = normalizePreviewString(o.classTitle, base.classTitle);
+  const reward = normalizePreviewString(o.reward, base.reward);
+  const level = normalizePreviewInt(o.level, base.level, LEVEL_MIN, LEVEL_MAX);
+  const theme = typeof o.theme === 'undefined' ? base.theme : normalizeTheme(o.theme);
+  const weekStart = normalizePreviewInt(o.weekStart, base.weekStart, 0, 6);
+  const weekCount = typeof o.weekCount === 'undefined' ? base.weekCount : normalizeWeekCount(o.weekCount);
+  const chores = normalizePreviewChores(o.chores, base.chores);
+  if (
+    kid === null ||
+    levelName === null ||
+    classTitle === null ||
+    reward === null ||
+    level === null ||
+    theme === null ||
+    weekStart === null ||
+    weekCount === null ||
+    chores === null
+  ) {
+    return null;
+  }
+  return normalizeChoreState({
+    kid,
+    level,
+    levelName,
+    classTitle,
+    reward,
+    lang,
+    theme,
+    weekStart,
+    weekCount,
+    chores,
+  });
+}
+
+export function decodePreviewData(s: string, defaults: ChoreState = defaultStateForLang('en')): ChoreState | null {
+  try {
+    if (!s) return null;
+    let json = decompressFromEncodedURIComponent(s);
+    if (!json) {
+      const bin = fromUrlSafeB64(s);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      json = new TextDecoder().decode(bytes);
+    }
+    const parsed = JSON.parse(json);
+    return normalizePreviewData(restorePreviewKeys(parsed), defaults);
+  } catch {
+    return null;
+  }
+}
+
+function currentHref(): string {
+  if (typeof window !== 'undefined') return window.location.href;
+  return 'http://localhost/';
+}
+
+export function buildPreviewUrl(data: PreviewData, href: string = currentHref()): string {
+  const url = new URL(href);
+  url.searchParams.set(PREVIEW_DATA_PARAM, encodePreviewData(data));
+  url.hash = '';
+  return url.toString();
+}
+
+export function loadPreviewStateFromUrl(
+  defaults: ChoreState,
+  href: string = currentHref(),
+): ChoreState | null {
+  try {
+    const encoded = new URL(href).searchParams.get(PREVIEW_DATA_PARAM);
+    return encoded ? decodePreviewData(encoded, defaults) : null;
   } catch {
     return null;
   }
@@ -481,6 +679,8 @@ function readInitial(defaults: ChoreState): ChoreState {
     const fromHash = decodeState(hash);
     if (fromHash) return fromHash;
   }
+  const fromPreviewUrl = loadPreviewStateFromUrl(defaults);
+  if (fromPreviewUrl) return fromPreviewUrl;
   const last = loadLastKid();
   if (last) {
     const saved = loadKidState(last);

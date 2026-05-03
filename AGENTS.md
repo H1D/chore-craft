@@ -24,6 +24,7 @@ Languages supported: English, Russian, Dutch, Ukrainian, German, French, Spanish
 - Source HTML template: `src/index.html`.
 - Built output: `dist/`, ignored by git.
 - Deployment: Cloudflare Pages via Wrangler.
+- Pull request previews: `.github/workflows/cloudflare.yml` deploys Cloudflare Pages previews and updates the PR description with the deploy URL plus prefilled `?data=` sample links.
 - Secrets scanning: Gitleaks GitHub Action.
 - Tests: `bun:test` (codec + storage + render smoke tests).
 
@@ -41,7 +42,7 @@ Languages supported: English, Russian, Dutch, Ukrainian, German, French, Spanish
 
 - `src/index.html` + `src/main.tsx`: WYSIWYG single-theme app shell with toolbar, persisted state, and inline editing.
 - `src/toolbar.tsx`: top toolbar (kid `<select>` with an "Add new kid..." modal, flag language select, week start select, 1/2 week select, Highlight fields checkbox, Print button). Hidden via `@media print`.
-- `src/state.tsx`: `ChoreState` type, URL-safe base64 codec (`encodeState` / `decodeState`), per-kid `localStorage` adapter (`loadKidState` / `saveKidState` / `listKids` / `loadLastKid`), and the `useChoreState` hook (URL hash mirror debounced 200ms, fallback to last-kid storage, then to defaults).
+- `src/state.tsx`: `ChoreState` type, URL-safe base64 codecs (`encodeState` / `decodeState` for live hash state, `encodePreviewData` / `buildPreviewUrl` / `loadPreviewStateFromUrl` for lz-string `?data=` prefilled preview links), per-kid `localStorage` adapter (`loadKidState` / `saveKidState` / `listKids` / `loadLastKid`), and the `useChoreState` hook (URL hash mirror debounced 200ms, fallback to preview data, then last-kid storage, then defaults).
 - `src/inline.tsx`: `InlineText`, `InlineNumber`, `InlineAddRow`, `InlineRemoveButton` primitives. The `.cc-edit` style block is injected once via `useEffect`; the `.cc-edit-ui` class hides + / × buttons in print.
 - Only Character Sheet is active. Disabled prototype variants may remain in `src/`, but do not register them in `src/main.tsx` or `src/toolbar.tsx` until their layouts are fixed.
 
@@ -51,7 +52,7 @@ Languages supported: English, Russian, Dutch, Ukrainian, German, French, Spanish
 src/index.html             -> single-page app HTML template
 src/main.tsx               -> app shell: useChoreState + Toolbar + active variant
 src/toolbar.tsx            -> kid / flag language / week / print toolbar
-src/state.tsx              -> ChoreState, codec, localStorage, useChoreState hook
+src/state.tsx              -> ChoreState, hash + preview URL codecs, localStorage, useChoreState hook
 src/inline.tsx             -> inline-edit primitives
 src/i18n.tsx               -> EN / RU / NL / UK / DE / FR / ES / IT strings
 src/ornaments.tsx          -> shared decorative SVG
@@ -99,8 +100,9 @@ Week controls are persisted state: `weekStart` is a zero-based index into `t.day
 ## Persistence
 
 - URL hash: state is JSON-stringified, base64url-encoded (no padding, `-`/`_` alphabet) and written to `location.hash` via `useChoreState` debounced 200ms. Reload restores from hash.
+- Preview URL API: `?data=` may contain a partial prefill payload encoded by `encodePreviewData` / `buildPreviewUrl` as lz-string URI-compressed JSON. Missing fields are filled from `defaultStateForLang`, compact keys are restored via `PREVIEW_KEY_COMPRESSION_MAP`, and uncompressed JSON keys are also accepted for external generators. Load priority is hash first, then `?data=`, then last-kid storage, then defaults, so auto-written hash state preserves later inline edits even when the original preview parameter remains in the URL.
 - localStorage: each kid's state is saved under `chorecraft:kid:<name>`. The most recently used kid is tracked under `chorecraft:lastKid`.
-- Resolution order on mount: URL hash → last-kid storage → defaults from `DEFAULT_CHORES[lang]`.
+- Resolution order on mount: URL hash → `?data=` preview seed → last-kid storage → defaults from `DEFAULT_CHORES[lang]`.
 - Switching kids in the toolbar dropdown persists the current state under the old kid name first, then loads the new kid. Choosing "Add new kid..." opens a modal and seeds defaults for the new name.
 
 ## Printing
