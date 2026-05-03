@@ -85,6 +85,7 @@ dist/                      -> generated static site, ignored by git
 ## Deployment
 
 Cloudflare Pages deploys via GitHub Actions and Wrangler. Production deploy runs on each merge/push to `main`.
+Pull requests get a Cloudflare Pages preview, and the workflow updates the PR description with the preview URL plus prefilled `?data=` sample links.
 
 Production hostname:
 

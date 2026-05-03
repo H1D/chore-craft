@@ -24,6 +24,7 @@ Languages supported: English, Russian, Dutch, Ukrainian, German, French, Spanish
 - Source HTML template: `src/index.html`.
 - Built output: `dist/`, ignored by git.
 - Deployment: Cloudflare Pages via Wrangler.
+- Pull request previews: `.github/workflows/cloudflare.yml` deploys Cloudflare Pages previews and updates the PR description with the deploy URL plus prefilled `?data=` sample links.
 - Secrets scanning: Gitleaks GitHub Action.
 - Tests: `bun:test` (codec + storage + render smoke tests).
 
