@@ -1,4 +1,6 @@
 import React from 'react';
+import { EditableNumber, EditableText, InlineAddRow, InlineRemoveButton } from './inline';
+import { CHORE_CAP } from './state';
 
 // Variation 5: Roblox-style — chunky 3D blocky avatars, vibrant primary palette, robux-coin XP
 // A4 portrait: 794 × 1123 px
@@ -90,7 +92,7 @@ function BloxCheck({ size = 26, filled = false, color = '#3a6df0' }) {
   );
 }
 
-function Roblox({ data, lang }) {
+function Roblox({ data, lang, edit }) {
   const t = window.I18N[lang];
   const { heroName, level, levelName, chores, bonus, reward } = data;
 
@@ -122,11 +124,29 @@ function Roblox({ data, lang }) {
             <span style={rbStyles.heroPill}>● ONLINE</span>
             <span style={rbStyles.heroFriends}>{lang === 'ru' ? 'ИГРОК' : lang === 'nl' ? 'SPELER' : 'PLAYER'}</span>
           </div>
-          <div style={rbStyles.heroName}>{heroName}</div>
-          <div style={rbStyles.heroSub}>"{levelName}"</div>
+          <div style={rbStyles.heroName}>
+            <EditableText value={heroName} onChange={edit?.setHeroName} ariaLabel="Hero name" />
+          </div>
+          <div style={rbStyles.heroSub}>
+            "
+            <EditableText
+              value={levelName}
+              onChange={edit?.setLevelName}
+              ariaLabel="Level title"
+            />
+            "
+          </div>
           <div style={rbStyles.heroStats}>
             <div style={rbStyles.heroStat}>
-              <span style={{ ...rbStyles.heroStatNum, color: palette.primary }}>{level}</span>
+              <span style={{ ...rbStyles.heroStatNum, color: palette.primary }}>
+                <EditableNumber
+                  value={level}
+                  min={1}
+                  max={99}
+                  onChange={edit?.setLevel}
+                  ariaLabel="Level"
+                />
+              </span>
               <span style={rbStyles.heroStatLabel}>{t.levelLabel}</span>
             </div>
             <div style={rbStyles.heroStat}>
@@ -178,12 +198,30 @@ function Roblox({ data, lang }) {
           return (
             <div key={i} style={rbStyles.questRow}>
               <div style={{ ...rbStyles.questCard, borderColor: col }}>
+                {edit && (
+                  <InlineRemoveButton
+                    onRemove={() => edit.removeChore(i)}
+                    label={`Remove quest ${i + 1}`}
+                  />
+                )}
                 <div style={{ ...rbStyles.questDot, background: col }} />
-                <span style={rbStyles.questName}>{c.name}</span>
+                <span style={rbStyles.questName}>
+                  <EditableText
+                    value={c.name}
+                    onChange={edit ? (v: string) => edit.setChoreName(i, v) : undefined}
+                    ariaLabel={`Quest ${i + 1} name`}
+                  />
+                </span>
               </div>
               <div style={rbStyles.questXp}>
                 <RobuxCoin size={16} />
-                <span>{c.xp}</span>
+                <EditableNumber
+                  value={c.xp}
+                  min={1}
+                  max={99}
+                  onChange={edit ? (v: number) => edit.setChoreXp(i, v) : undefined}
+                  ariaLabel={`Quest ${i + 1} XP`}
+                />
               </div>
               {t.days.map((_, di) => (
                 <div key={di} style={rbStyles.questCheckCell}>
@@ -193,23 +231,29 @@ function Roblox({ data, lang }) {
             </div>
           );
         })}
-        {Array.from({ length: Math.max(0, 6 - chores.length) }, (_, i) => (
-          <div key={`e${i}`} style={rbStyles.questRow}>
-            <div style={{ ...rbStyles.questCard, borderColor: '#ccc', opacity: 0.6 }}>
-              <div style={{ ...rbStyles.questDot, background: '#ccc' }} />
-              <span style={{ ...rbStyles.questName, color: '#999' }}>____________</span>
-            </div>
-            <div style={{ ...rbStyles.questXp, opacity: 0.4 }}>
-              <RobuxCoin size={16} />
-              <span>__</span>
-            </div>
-            {t.days.map((_, di) => (
-              <div key={di} style={rbStyles.questCheckCell}>
-                <BloxCheck size={22} color="#aaa" />
+        {!edit &&
+          Array.from({ length: Math.max(0, 6 - chores.length) }, (_, i) => (
+            <div key={`e${i}`} style={rbStyles.questRow}>
+              <div style={{ ...rbStyles.questCard, borderColor: '#ccc', opacity: 0.6 }}>
+                <div style={{ ...rbStyles.questDot, background: '#ccc' }} />
+                <span style={{ ...rbStyles.questName, color: '#999' }}>____________</span>
               </div>
-            ))}
+              <div style={{ ...rbStyles.questXp, opacity: 0.4 }}>
+                <RobuxCoin size={16} />
+                <span>__</span>
+              </div>
+              {t.days.map((_, di) => (
+                <div key={di} style={rbStyles.questCheckCell}>
+                  <BloxCheck size={22} color="#aaa" />
+                </div>
+              ))}
+            </div>
+          ))}
+        {edit && chores.length < CHORE_CAP && (
+          <div style={{ ...rbStyles.questRow, gridTemplateColumns: '1fr' }}>
+            <InlineAddRow onAdd={edit.addChore} label="Add quest" />
           </div>
-        ))}
+        )}
       </div>
 
       {/* Bonus quests + badges */}
@@ -238,7 +282,16 @@ function Roblox({ data, lang }) {
         <div style={rbStyles.rewardConfetti}>★ ◆ ★ ◆ ★ ◆ ★ ◆ ★ ◆ ★</div>
         <div style={rbStyles.rewardTitle}>🎉 {t.levelUpReward} 🎉</div>
         <div style={rbStyles.rewardBody}>
-          {reward || <span style={{ opacity: 0.4, fontStyle: 'italic' }}>{t.chosenBy}…</span>}
+          {edit ? (
+            <EditableText
+              value={reward}
+              onChange={edit.setReward}
+              ariaLabel="Reward"
+              style={{ display: 'inline-block', minWidth: '8ch' }}
+            />
+          ) : (
+            reward || <span style={{ opacity: 0.4, fontStyle: 'italic' }}>{t.chosenBy}…</span>
+          )}
         </div>
         <div style={rbStyles.rewardSign}>
           <div style={rbStyles.signCol}>

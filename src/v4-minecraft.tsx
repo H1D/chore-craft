@@ -1,4 +1,6 @@
 import React from 'react';
+import { EditableNumber, EditableText, InlineAddRow, InlineRemoveButton } from './inline';
+import { CHORE_CAP } from './state';
 
 // Variation 4: Minecraft-style — pixel blocks, dirt/stone/grass textures, achievement banners
 // A4 portrait: 794 × 1123 px
@@ -233,7 +235,7 @@ function AchievementBanner({ title, sub, icon = 'star' }) {
   );
 }
 
-function Minecraft({ data, lang }) {
+function Minecraft({ data, lang, edit }) {
   const t = window.I18N[lang];
   const { heroName, level, levelName, chores, bonus, reward } = data;
 
@@ -268,12 +270,28 @@ function Minecraft({ data, lang }) {
       <div style={mcStyles.titlePlaque}>
         <PixelSword size={60} />
         <div style={mcStyles.titleStack}>
-          <div style={mcStyles.username}>{heroName}</div>
+          <div style={mcStyles.username}>
+            <EditableText value={heroName} onChange={edit?.setHeroName} ariaLabel="Hero name" />
+          </div>
           <div style={mcStyles.levelLine}>
             <span style={mcStyles.levelBadge}>
-              <XPOrb size={14} /> {t.levelLabel} {level}
+              <XPOrb size={14} /> {t.levelLabel}{' '}
+              <EditableNumber
+                value={level}
+                min={1}
+                max={99}
+                onChange={edit?.setLevel}
+                ariaLabel="Level"
+              />
             </span>
-            <span style={mcStyles.levelTitle}>· {levelName}</span>
+            <span style={mcStyles.levelTitle}>
+              ·{' '}
+              <EditableText
+                value={levelName}
+                onChange={edit?.setLevelName}
+                ariaLabel="Level title"
+              />
+            </span>
           </div>
         </div>
         <PixelPick size={60} />
@@ -322,12 +340,30 @@ function Minecraft({ data, lang }) {
         {chores.map((c, i) => (
           <div key={i} style={mcStyles.invRow}>
             <div style={mcStyles.invQuestCell}>
+              {edit && (
+                <InlineRemoveButton
+                  onRemove={() => edit.removeChore(i)}
+                  label={`Remove quest ${i + 1}`}
+                />
+              )}
               <PixelBlock size={28} kind={blockKinds[i % blockKinds.length]} />
-              <span style={mcStyles.invQuestText}>{c.name}</span>
+              <span style={mcStyles.invQuestText}>
+                <EditableText
+                  value={c.name}
+                  onChange={edit ? (v: string) => edit.setChoreName(i, v) : undefined}
+                  ariaLabel={`Quest ${i + 1} name`}
+                />
+              </span>
             </div>
             <div style={mcStyles.invXpCell}>
               <XPOrb size={14} />
-              <span>{c.xp}</span>
+              <EditableNumber
+                value={c.xp}
+                min={1}
+                max={99}
+                onChange={edit ? (v: number) => edit.setChoreXp(i, v) : undefined}
+                ariaLabel={`Quest ${i + 1} XP`}
+              />
             </div>
             {t.days.map((_, di) => (
               <div key={di} style={mcStyles.invSlot}>
@@ -336,20 +372,35 @@ function Minecraft({ data, lang }) {
             ))}
           </div>
         ))}
-        {Array.from({ length: Math.max(0, 6 - chores.length) }, (_, i) => (
-          <div key={`e${i}`} style={mcStyles.invRow}>
-            <div style={mcStyles.invQuestCell}>
-              <div style={{ width: 28, height: 28, border: '1.5px dashed #6b6b6b', boxSizing: 'border-box' }} />
-              <span style={{ ...mcStyles.invQuestText, opacity: 0.4 }}>______________</span>
-            </div>
-            <div style={mcStyles.invXpCell}><span style={{ opacity: 0.4 }}>___</span></div>
-            {t.days.map((_, di) => (
-              <div key={di} style={mcStyles.invSlot}>
-                <div style={mcStyles.invSlotInner} />
+        {!edit &&
+          Array.from({ length: Math.max(0, 6 - chores.length) }, (_, i) => (
+            <div key={`e${i}`} style={mcStyles.invRow}>
+              <div style={mcStyles.invQuestCell}>
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    border: '1.5px dashed #6b6b6b',
+                    boxSizing: 'border-box',
+                  }}
+                />
+                <span style={{ ...mcStyles.invQuestText, opacity: 0.4 }}>______________</span>
               </div>
-            ))}
+              <div style={mcStyles.invXpCell}>
+                <span style={{ opacity: 0.4 }}>___</span>
+              </div>
+              {t.days.map((_, di) => (
+                <div key={di} style={mcStyles.invSlot}>
+                  <div style={mcStyles.invSlotInner} />
+                </div>
+              ))}
+            </div>
+          ))}
+        {edit && chores.length < CHORE_CAP && (
+          <div style={{ ...mcStyles.invRow, gridTemplateColumns: '1fr' }}>
+            <InlineAddRow onAdd={edit.addChore} label="Add quest" />
           </div>
-        ))}
+        )}
       </div>
 
       {/* Bonus quests as chests */}
@@ -387,7 +438,16 @@ function Minecraft({ data, lang }) {
         <div style={mcStyles.bossPlate}>
           <div style={mcStyles.bossLabel}>★ {t.levelUpReward} ★</div>
           <div style={mcStyles.bossText}>
-            {reward || <span style={{ opacity: 0.4, fontStyle: 'italic' }}>{t.chosenBy}…</span>}
+            {edit ? (
+              <EditableText
+                value={reward}
+                onChange={edit.setReward}
+                ariaLabel="Reward"
+                style={{ display: 'inline-block', minWidth: '6ch', color: '#fff' }}
+              />
+            ) : (
+              reward || <span style={{ opacity: 0.4, fontStyle: 'italic' }}>{t.chosenBy}…</span>
+            )}
           </div>
           <div style={mcStyles.bossSign}>
             <span>{t.signature}: ____________</span>

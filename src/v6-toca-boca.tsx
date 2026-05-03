@@ -1,4 +1,6 @@
 import React from 'react';
+import { EditableNumber, EditableText, InlineAddRow, InlineRemoveButton } from './inline';
+import { CHORE_CAP } from './state';
 
 // Variation 6: Toca Boca-style — soft pastels, rounded shapes, cute friendly characters, sticker-feel
 // A4 portrait: 794 × 1123 px
@@ -135,7 +137,7 @@ function BubbleCheck({ size = 28, color = '#ff6f8e' }) {
   );
 }
 
-function TocaBoca({ data, lang }) {
+function TocaBoca({ data, lang, edit }) {
   const t = window.I18N[lang];
   const { heroName, level, levelName, chores, bonus, reward } = data;
 
@@ -155,7 +157,7 @@ function TocaBoca({ data, lang }) {
         <div style={tbStyles.charCard}>
           <TocaCharacter size={130} hairColor="#5a3a22" skinColor="#fdd9b5" shirtColor="#ffadc6" dress />
           <div style={tbStyles.charNameTag}>
-            <span>{heroName}</span>
+            <EditableText value={heroName} onChange={edit?.setHeroName} ariaLabel="Hero name" />
           </div>
         </div>
         <div style={tbStyles.heroCard}>
@@ -163,11 +165,27 @@ function TocaBoca({ data, lang }) {
             <Sticker kind="star" size={36} color="#ffd836" />
             <div style={tbStyles.levelBubble}>
               <span style={tbStyles.levelBubbleSmall}>{t.levelLabel}</span>
-              <span style={tbStyles.levelBubbleNum}>{level}</span>
+              <span style={tbStyles.levelBubbleNum}>
+                <EditableNumber
+                  value={level}
+                  min={1}
+                  max={99}
+                  onChange={edit?.setLevel}
+                  ariaLabel="Level"
+                />
+              </span>
             </div>
             <Sticker kind="heart" size={36} color="#ff6f8e" />
           </div>
-          <div style={tbStyles.heroTitle}>"{levelName}"</div>
+          <div style={tbStyles.heroTitle}>
+            "
+            <EditableText
+              value={levelName}
+              onChange={edit?.setLevelName}
+              ariaLabel="Level title"
+            />
+            "
+          </div>
           <div style={tbStyles.heroChips}>
             <span style={{ ...tbStyles.chip, background: '#ffe17e' }}>
               <Sticker kind="star" size={16} /> {t.totalXP}: ___
@@ -217,10 +235,32 @@ function TocaBoca({ data, lang }) {
         {chores.map((c, i) => (
           <div key={i} style={tbStyles.questRow}>
             <div style={tbStyles.questNameCell}>
+              {edit && (
+                <InlineRemoveButton
+                  onRemove={() => edit.removeChore(i)}
+                  label={`Remove quest ${i + 1}`}
+                />
+              )}
               <ChoreSticker idx={i} />
               <div>
-                <div style={tbStyles.questName}>{c.name}</div>
-                <div style={tbStyles.questXp}>+{c.xp} ★</div>
+                <div style={tbStyles.questName}>
+                  <EditableText
+                    value={c.name}
+                    onChange={edit ? (v: string) => edit.setChoreName(i, v) : undefined}
+                    ariaLabel={`Quest ${i + 1} name`}
+                  />
+                </div>
+                <div style={tbStyles.questXp}>
+                  +
+                  <EditableNumber
+                    value={c.xp}
+                    min={1}
+                    max={99}
+                    onChange={edit ? (v: number) => edit.setChoreXp(i, v) : undefined}
+                    ariaLabel={`Quest ${i + 1} XP`}
+                  />{' '}
+                  ★
+                </div>
               </div>
             </div>
             {t.days.map((_, di) => (
@@ -230,22 +270,28 @@ function TocaBoca({ data, lang }) {
             ))}
           </div>
         ))}
-        {Array.from({ length: Math.max(0, 5 - chores.length) }, (_, i) => (
-          <div key={`e${i}`} style={tbStyles.questRow}>
-            <div style={tbStyles.questNameCell}>
-              <div style={{ ...tbStyles.questIconPad, background: '#f5e7d6', borderColor: '#3a2218' }} />
-              <div>
-                <div style={{ ...tbStyles.questName, opacity: 0.4 }}>______________</div>
-                <div style={{ ...tbStyles.questXp, opacity: 0.4 }}>+__</div>
+        {!edit &&
+          Array.from({ length: Math.max(0, 5 - chores.length) }, (_, i) => (
+            <div key={`e${i}`} style={tbStyles.questRow}>
+              <div style={tbStyles.questNameCell}>
+                <div style={{ ...tbStyles.questIconPad, background: '#f5e7d6', borderColor: '#3a2218' }} />
+                <div>
+                  <div style={{ ...tbStyles.questName, opacity: 0.4 }}>______________</div>
+                  <div style={{ ...tbStyles.questXp, opacity: 0.4 }}>+__</div>
+                </div>
               </div>
+              {t.days.map((_, di) => (
+                <div key={di} style={tbStyles.questDayCell}>
+                  <BubbleCheck size={26} color={dayColors[di]} />
+                </div>
+              ))}
             </div>
-            {t.days.map((_, di) => (
-              <div key={di} style={tbStyles.questDayCell}>
-                <BubbleCheck size={26} color={dayColors[di]} />
-              </div>
-            ))}
+          ))}
+        {edit && chores.length < CHORE_CAP && (
+          <div style={{ ...tbStyles.questRow, gridTemplateColumns: '1fr' }}>
+            <InlineAddRow onAdd={edit.addChore} label="Add quest" />
           </div>
-        ))}
+        )}
       </div>
 
       {/* Bonus + sticker collection */}
@@ -307,7 +353,16 @@ function TocaBoca({ data, lang }) {
           </div>
           <div style={tbStyles.rewardTitle}>{t.levelUpReward}</div>
           <div style={tbStyles.rewardText}>
-            {reward || <span style={{ opacity: 0.4, fontStyle: 'italic' }}>{t.chosenBy}…</span>}
+            {edit ? (
+              <EditableText
+                value={reward}
+                onChange={edit.setReward}
+                ariaLabel="Reward"
+                style={{ display: 'inline-block', minWidth: '6ch' }}
+              />
+            ) : (
+              reward || <span style={{ opacity: 0.4, fontStyle: 'italic' }}>{t.chosenBy}…</span>
+            )}
           </div>
           <div style={tbStyles.rewardSign}>
             <span>♥ {t.signature}: __________</span>

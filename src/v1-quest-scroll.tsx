@@ -1,16 +1,28 @@
 import React from 'react';
+import { EditableNumber, EditableText, InlineAddRow, InlineRemoveButton } from './inline';
+import { CHORE_CAP } from './state';
 
 // Variation 1: Quest Scroll
 // Parchment scroll layout — quest log with daily checkbox grid + XP bars + reward seal.
 // A4 portrait: 794 × 1123 px
 
-function QuestScroll({ data, lang }) {
+function QuestScroll({ data, lang, edit }) {
   const t = window.I18N[lang];
   const O = window.Ornament;
-  const { heroName, level, levelName, dateStart, dateEnd, chores, bonus, reward, witness } = data;
+  const {
+    heroName,
+    level,
+    levelName,
+    chores,
+    bonus,
+    reward,
+    dayLabels = t.days,
+    dayIndexes = t.days.map((_, i) => i),
+  } = data;
+  const longQuestHeader = dayLabels.length > 7;
 
   return (
-    <div style={qsStyles.page}>
+    <div style={{ ...qsStyles.page, ...(longQuestHeader ? qsStyles.pageCompact : null) }}>
       {/* Parchment texture (subtle) */}
       <div style={qsStyles.parchment} />
 
@@ -29,16 +41,36 @@ function QuestScroll({ data, lang }) {
       </div>
 
       {/* Header */}
-      <div style={qsStyles.header}>
+      <div style={{ ...qsStyles.header, ...(longQuestHeader ? qsStyles.headerCompact : null) }}>
         <div style={qsStyles.heroLine}>
           <O.Diamond size={6} color="#7a3a2a" />
           <span style={qsStyles.heroLabel}>{t.heroLabel}</span>
-          <span style={qsStyles.heroName}>{heroName}</span>
+          <EditableText
+            value={heroName}
+            onChange={edit?.setHeroName}
+            ariaLabel="Hero name"
+            style={qsStyles.heroName}
+          />
           <O.Diamond size={6} color="#7a3a2a" />
         </div>
-        <h1 style={qsStyles.title}>{t.questLog}</h1>
+        <h1 style={{ ...qsStyles.title, ...(longQuestHeader ? qsStyles.titleCompact : null) }}>
+          {t.questLog}
+        </h1>
         <div style={qsStyles.subtitle}>
-          {t.levelLabel} {level} · {levelName}
+          {t.levelLabel}{' '}
+          <EditableNumber
+            value={level}
+            min={1}
+            max={99}
+            onChange={edit?.setLevel}
+            ariaLabel="Level"
+          />{' '}
+          ·{' '}
+          <EditableText
+            value={levelName}
+            onChange={edit?.setLevelName}
+            ariaLabel="Level title"
+          />
         </div>
         <O.Divider width={420} color="#7a3a2a" />
         <div style={qsStyles.dates}>
@@ -49,7 +81,7 @@ function QuestScroll({ data, lang }) {
       </div>
 
       {/* XP Master Bar */}
-      <div style={qsStyles.xpSection}>
+      <div style={{ ...qsStyles.xpSection, ...(longQuestHeader ? qsStyles.xpSectionCompact : null) }}>
         <div style={qsStyles.xpLabelRow}>
           <span style={qsStyles.sectionLabel}>{t.xpProgress}</span>
           <span style={qsStyles.xpHint}>{t.totalXP}: ____ / ____</span>
@@ -58,9 +90,9 @@ function QuestScroll({ data, lang }) {
       </div>
 
       {/* Daily Quests Grid */}
-      <div style={qsStyles.questsSection}>
-        <div style={qsStyles.bannerRow}>
-          <O.Banner width={260} height={36} color="#7a3a2a">
+      <div style={{ ...qsStyles.questsSection, ...(longQuestHeader ? qsStyles.questsSectionCompact : null) }}>
+        <div style={{ ...qsStyles.bannerRow, ...(longQuestHeader ? qsStyles.bannerRowCompact : null) }}>
+          <O.Banner width={260} height={longQuestHeader ? 32 : 36} color="#7a3a2a">
             {t.dailyQuests}
           </O.Banner>
         </div>
@@ -68,62 +100,115 @@ function QuestScroll({ data, lang }) {
         <table style={qsStyles.questTable}>
           <thead>
             <tr>
-              <th style={{ ...qsStyles.th, width: '38%', textAlign: 'left', paddingLeft: 12 }}>
+              <th
+                style={{
+                  ...qsStyles.th,
+                  width: longQuestHeader ? '31%' : '38%',
+                  textAlign: 'left',
+                  paddingLeft: 12,
+                }}
+              >
                 Quest
               </th>
-              <th style={{ ...qsStyles.th, width: '8%' }}>XP</th>
-              {t.days.map((d, i) => (
-                <th key={i} style={qsStyles.th}>{d}</th>
+              <th style={{ ...qsStyles.th, width: longQuestHeader ? '7%' : '8%' }}>XP</th>
+              {dayLabels.map((d, i) => (
+                <th
+                  key={i}
+                  style={
+                    longQuestHeader
+                      ? { ...qsStyles.th, ...qsStyles.thCompact }
+                      : qsStyles.th
+                  }
+                >
+                  {d}
+                </th>
               ))}
-              <th style={{ ...qsStyles.th, width: '7%' }}>Σ</th>
+              <th style={{ ...qsStyles.th, width: longQuestHeader ? '6%' : '7%' }}>Σ</th>
             </tr>
           </thead>
           <tbody>
             {chores.map((c, i) => (
               <tr key={i} style={qsStyles.tr}>
-                <td style={qsStyles.tdQuest}>
+                <td style={{ ...qsStyles.tdQuest, ...(longQuestHeader ? qsStyles.tdQuestCompact : null) }}>
+                  {edit && (
+                    <InlineRemoveButton
+                      onRemove={() => edit.removeChore(i)}
+                      label={`Remove quest ${i + 1}`}
+                    />
+                  )}
                   <span style={qsStyles.questNum}>{String(i + 1).padStart(2, '0')}</span>
-                  <span style={qsStyles.questName}>{c.name}</span>
+                  <EditableText
+                    value={c.name}
+                    onChange={edit ? (v: string) => edit.setChoreName(i, v) : undefined}
+                    style={{ ...qsStyles.questName, ...(longQuestHeader ? qsStyles.questNameCompact : null) }}
+                    ariaLabel={`Quest ${i + 1} name`}
+                  />
                 </td>
-                <td style={qsStyles.tdXp}>+{c.xp}</td>
-                {t.days.map((_, di) => (
-                  <td key={di} style={qsStyles.tdCheck}>
-                    <O.Checkbox size={20} color="#5a2a1f" />
+                <td style={qsStyles.tdXp}>
+                  +
+                  <EditableNumber
+                    value={c.xp}
+                    min={1}
+                    max={99}
+                    nullable
+                    onChange={edit ? (v: number | null) => edit.setChoreXp(i, v) : undefined}
+                    ariaLabel={`Quest ${i + 1} XP`}
+                  />
+                </td>
+                {dayLabels.map((_, di) => (
+                  <td key={di} style={{ ...qsStyles.tdCheck, ...(longQuestHeader ? qsStyles.tdCheckCompact : null) }}>
+                    <DayToggle
+                      O={O}
+                      active={c.days?.[dayIndexes[di] ?? di] !== false}
+                      editable={!!edit?.toggleChoreDay}
+                      size={longQuestHeader ? 18 : 20}
+                      onToggle={() => edit.toggleChoreDay(i, dayIndexes[di] ?? di)}
+                    />
                   </td>
                 ))}
                 <td style={qsStyles.tdSum}></td>
               </tr>
             ))}
-            {/* Empty rows so the table always feels full */}
-            {Array.from({ length: Math.max(0, 7 - chores.length) }, (_, i) => (
+            {/* Print mode: pad with placeholder rows so the table feels full */}
+            {!edit && Array.from({ length: Math.max(0, CHORE_CAP - chores.length) }, (_, i) => (
               <tr key={`empty-${i}`} style={qsStyles.tr}>
-                <td style={qsStyles.tdQuest}>
+                <td style={{ ...qsStyles.tdQuest, ...(longQuestHeader ? qsStyles.tdQuestCompact : null) }}>
                   <span style={qsStyles.questNum}>{String(chores.length + i + 1).padStart(2, '0')}</span>
-                  <span style={{ ...qsStyles.questName, opacity: 0.25 }}>_______________________</span>
+                  <span style={{ ...qsStyles.questName, ...(longQuestHeader ? qsStyles.questNameCompact : null), opacity: 0.25 }}>
+                    _________________________
+                  </span>
                 </td>
                 <td style={qsStyles.tdXp}>+__</td>
-                {t.days.map((_, di) => (
-                  <td key={di} style={qsStyles.tdCheck}>
-                    <O.Checkbox size={20} color="#5a2a1f" />
+                {dayLabels.map((_, di) => (
+                  <td key={di} style={{ ...qsStyles.tdCheck, ...(longQuestHeader ? qsStyles.tdCheckCompact : null) }}>
+                    <O.Checkbox size={longQuestHeader ? 18 : 20} color="#5a2a1f" />
                   </td>
                 ))}
                 <td style={qsStyles.tdSum}></td>
               </tr>
             ))}
+            {/* Edit mode: trailing add-row button, hidden when at chore cap */}
+            {edit && chores.length < CHORE_CAP && (
+              <tr style={qsStyles.tr}>
+                <td style={qsStyles.tdQuest} colSpan={2 + dayLabels.length + 1}>
+                  <InlineAddRow onAdd={edit.addChore} label="Add quest" />
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
 
       {/* Bonus Quests */}
-      <div style={qsStyles.bonusSection}>
-        <div style={qsStyles.bannerRow}>
-          <O.Banner width={220} height={32} color="#3d5a4a">
+      <div style={{ ...qsStyles.bonusSection, ...(longQuestHeader ? qsStyles.bonusSectionCompact : null) }}>
+        <div style={{ ...qsStyles.bannerRow, ...(longQuestHeader ? qsStyles.bannerRowCompact : null) }}>
+          <O.Banner width={220} height={longQuestHeader ? 30 : 32} color="#3d5a4a">
             {t.bonusQuests}
           </O.Banner>
         </div>
-        <div style={qsStyles.bonusGrid}>
+        <div style={{ ...qsStyles.bonusGrid, ...(longQuestHeader ? qsStyles.bonusGridCompact : null) }}>
           {Array.from({ length: 6 }, (_, i) => (
-            <div key={i} style={qsStyles.bonusItem}>
+            <div key={i} style={{ ...qsStyles.bonusItem, ...(longQuestHeader ? qsStyles.bonusItemCompact : null) }}>
               <O.Checkbox size={18} color="#3d5a4a" />
               <span style={qsStyles.bonusText}>
                 {bonus[i] || <span style={{ opacity: 0.3 }}>__________________</span>}
@@ -135,16 +220,25 @@ function QuestScroll({ data, lang }) {
       </div>
 
       {/* Reward seal at bottom */}
-      <div style={qsStyles.rewardSection}>
-        <div style={qsStyles.sealWrap}>
-          <O.Seal size={92} color="#7a3a2a" text={`L${level}`} />
+      <div style={{ ...qsStyles.rewardSection, ...(longQuestHeader ? qsStyles.rewardSectionCompact : null) }}>
+        <div style={{ ...qsStyles.sealWrap, ...(longQuestHeader ? qsStyles.sealWrapCompact : null) }}>
+          <O.Seal size={longQuestHeader ? 82 : 92} color="#7a3a2a" text={`L${level}`} />
         </div>
-        <div style={qsStyles.rewardCard}>
+        <div style={{ ...qsStyles.rewardCard, ...(longQuestHeader ? qsStyles.rewardCardCompact : null) }}>
           <div style={qsStyles.rewardLabel}>
             {t.levelUpReward}
           </div>
           <div style={qsStyles.rewardText}>
-            {reward || <span style={{ opacity: 0.35, fontStyle: 'italic' }}>{t.chosenBy}…</span>}
+            {edit ? (
+              <EditableText
+                value={reward}
+                onChange={edit.setReward}
+                ariaLabel="Reward"
+                style={{ display: 'inline-block', minWidth: '6ch' }}
+              />
+            ) : (
+              reward || <span style={{ opacity: 0.35, fontStyle: 'italic' }}>{t.chosenBy}…</span>
+            )}
           </div>
           <div style={qsStyles.rewardLines}>
             <div style={qsStyles.rewardLine}></div>
@@ -166,6 +260,27 @@ function QuestScroll({ data, lang }) {
   );
 }
 
+function DayToggle({ O, active, editable, size, onToggle }) {
+  const content = active ? (
+    <O.Checkbox size={size} color="#5a2a1f" />
+  ) : (
+    <span style={qsStyles.inactiveDay}>—</span>
+  );
+  if (!editable) return content;
+  return (
+    <button
+      type="button"
+      className="cc-edit"
+      aria-label={active ? 'Disable chore on this day' : 'Enable chore on this day'}
+      aria-pressed={active}
+      onClick={onToggle}
+      style={qsStyles.dayToggle}
+    >
+      {content}
+    </button>
+  );
+}
+
 const qsStyles = {
   page: {
     width: 794,
@@ -179,6 +294,9 @@ const qsStyles = {
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
+  },
+  pageCompact: {
+    padding: '30px 48px 32px',
   },
   parchment: {
     position: 'absolute',
@@ -196,6 +314,11 @@ const qsStyles = {
     marginTop: 8,
     marginBottom: 14,
     position: 'relative',
+  },
+  headerCompact: {
+    gap: 4,
+    marginTop: 4,
+    marginBottom: 8,
   },
   heroLine: {
     display: 'flex',
@@ -225,6 +348,10 @@ const qsStyles = {
     color: '#3a1f15',
     letterSpacing: '0.04em',
   },
+  titleCompact: {
+    fontSize: 34,
+    margin: '2px 0 0',
+  },
   subtitle: {
     fontFamily: '"JetBrains Mono", monospace',
     fontSize: 11,
@@ -252,6 +379,9 @@ const qsStyles = {
     margin: '6px 0 14px',
     position: 'relative',
   },
+  xpSectionCompact: {
+    margin: '2px 0 8px',
+  },
   xpLabelRow: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -276,10 +406,16 @@ const qsStyles = {
     marginBottom: 14,
     position: 'relative',
   },
+  questsSectionCompact: {
+    marginBottom: 8,
+  },
   bannerRow: {
     display: 'flex',
     justifyContent: 'center',
     marginBottom: 10,
+  },
+  bannerRowCompact: {
+    marginBottom: 6,
   },
   questTable: {
     width: '100%',
@@ -300,6 +436,11 @@ const qsStyles = {
     background: 'rgba(122,58,42,0.06)',
     textAlign: 'center',
   },
+  thCompact: {
+    fontSize: 7.5,
+    letterSpacing: '0.02em',
+    padding: '6px 0',
+  },
   tr: {
     borderBottom: '0.5px solid rgba(122,58,42,0.3)',
   },
@@ -309,6 +450,10 @@ const qsStyles = {
     alignItems: 'center',
     gap: 10,
     borderRight: '0.5px solid rgba(122,58,42,0.25)',
+  },
+  tdQuestCompact: {
+    padding: '5px 10px',
+    gap: 8,
   },
   questNum: {
     fontFamily: '"JetBrains Mono", monospace',
@@ -320,6 +465,9 @@ const qsStyles = {
     fontFamily: '"Crimson Pro", serif',
     fontSize: 13,
     color: '#2a1810',
+  },
+  questNameCompact: {
+    fontSize: 12,
   },
   tdXp: {
     fontFamily: '"JetBrains Mono", monospace',
@@ -335,12 +483,42 @@ const qsStyles = {
     borderRight: '0.5px dashed rgba(122,58,42,0.2)',
     verticalAlign: 'middle',
   },
+  tdCheckCompact: {
+    padding: '2px 0',
+  },
+  dayToggle: {
+    appearance: 'none',
+    border: 0,
+    background: 'transparent',
+    padding: 0,
+    margin: 0,
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 20,
+    minHeight: 20,
+  },
+  inactiveDay: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 18,
+    minHeight: 18,
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 13,
+    color: '#7a3a2a',
+    fontWeight: 600,
+  },
   tdSum: {
     borderRight: 'none',
     background: 'rgba(122,58,42,0.04)',
   },
   bonusSection: {
     marginBottom: 14,
+  },
+  bonusSectionCompact: {
+    marginBottom: 8,
   },
   bonusGrid: {
     display: 'grid',
@@ -350,12 +528,19 @@ const qsStyles = {
     padding: '10px 14px',
     background: 'rgba(61,90,74,0.04)',
   },
+  bonusGridCompact: {
+    gap: '3px 24px',
+    padding: '8px 14px',
+  },
   bonusItem: {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
     fontSize: 12,
     color: '#2a3a32',
+  },
+  bonusItemCompact: {
+    fontSize: 11,
   },
   bonusText: {
     flex: 1,
@@ -371,13 +556,19 @@ const qsStyles = {
     display: 'flex',
     gap: 16,
     alignItems: 'stretch',
-    marginTop: 'auto',
+    marginTop: 34,
+  },
+  rewardSectionCompact: {
+    marginTop: 14,
   },
   sealWrap: {
     width: 110,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sealWrapCompact: {
+    width: 104,
   },
   rewardCard: {
     flex: 1,
@@ -387,6 +578,10 @@ const qsStyles = {
     display: 'flex',
     flexDirection: 'column',
     gap: 6,
+  },
+  rewardCardCompact: {
+    padding: '10px 18px 12px',
+    gap: 4,
   },
   rewardLabel: {
     fontFamily: 'Cinzel, serif',

@@ -1,9 +1,11 @@
 import React from 'react';
+import { EditableNumber, EditableText, InlineAddRow, InlineRemoveButton } from './inline';
+import { CHORE_CAP } from './state';
 
 // Variation 3: Dungeon Map — quest map with rooms (each chore × day = one room)
 // A4 portrait: 794 × 1123 px
 
-function DungeonMap({ data, lang }) {
+function DungeonMap({ data, lang, edit }) {
   const t = window.I18N[lang];
   const O = window.Ornament;
   const { heroName, level, levelName, chores, bonus, reward } = data;
@@ -18,9 +20,25 @@ function DungeonMap({ data, lang }) {
       <div style={dmStyles.headerStrip}>
         <div style={dmStyles.headerLeft}>
           <div style={dmStyles.headerLabel}>{t.questMap}</div>
-          <div style={dmStyles.headerTitle}>{t.dungeonOf} {heroName}</div>
+          <div style={dmStyles.headerTitle}>
+            {t.dungeonOf}{' '}
+            <EditableText value={heroName} onChange={edit?.setHeroName} ariaLabel="Hero name" />
+          </div>
           <div style={dmStyles.headerSub}>
-            {t.levelLabel} {String(level).padStart(2,'0')} · {levelName}
+            {t.levelLabel}{' '}
+            <EditableNumber
+              value={level}
+              min={1}
+              max={99}
+              onChange={edit?.setLevel}
+              ariaLabel="Level"
+            />{' '}
+            ·{' '}
+            <EditableText
+              value={levelName}
+              onChange={edit?.setLevelName}
+              ariaLabel="Level title"
+            />
           </div>
         </div>
         <div style={dmStyles.headerRight}>
@@ -44,11 +62,23 @@ function DungeonMap({ data, lang }) {
       {/* Map: rows of rooms connected by lines */}
       <div style={dmStyles.map}>
         {chores.map((c, ri) => (
-          <DungeonRow key={ri} chore={c} rowIndex={ri} t={t} />
+          <DungeonRow key={ri} chore={c} rowIndex={ri} t={t} edit={edit} />
         ))}
-        {Array.from({ length: Math.max(0, 5 - chores.length) }, (_, i) => (
-          <DungeonRow key={`e${i}`} chore={{ name: '____________________', xp: '__' }} rowIndex={chores.length + i} t={t} placeholder />
-        ))}
+        {!edit &&
+          Array.from({ length: Math.max(0, 5 - chores.length) }, (_, i) => (
+            <DungeonRow
+              key={`e${i}`}
+              chore={{ name: '____________________', xp: '__' }}
+              rowIndex={chores.length + i}
+              t={t}
+              placeholder
+            />
+          ))}
+        {edit && chores.length < CHORE_CAP && (
+          <div style={{ ...dmStyles.row, gridTemplateColumns: '1fr', justifyContent: 'flex-start', padding: '6px 12px' }}>
+            <InlineAddRow onAdd={edit.addChore} label="Add quest" />
+          </div>
+        )}
       </div>
 
       {/* Bonus quest cards as treasure chests */}
@@ -73,7 +103,16 @@ function DungeonMap({ data, lang }) {
         <div style={dmStyles.bossRight}>
           <div style={dmStyles.bossLabelTop}>{t.bossBattle} · {t.levelUpReward}</div>
           <div style={dmStyles.bossText}>
-            {reward || <span style={{ opacity: 0.3, fontStyle: 'italic' }}>{t.chosenBy}…</span>}
+            {edit ? (
+              <EditableText
+                value={reward}
+                onChange={edit.setReward}
+                ariaLabel="Reward"
+                style={{ display: 'inline-block', minWidth: '6ch' }}
+              />
+            ) : (
+              reward || <span style={{ opacity: 0.3, fontStyle: 'italic' }}>{t.chosenBy}…</span>
+            )}
           </div>
           <div style={dmStyles.bossLine}></div>
           <div style={dmStyles.bossLine}></div>
@@ -93,15 +132,45 @@ function DungeonMap({ data, lang }) {
   );
 }
 
-function DungeonRow({ chore, rowIndex, t, placeholder }) {
+function DungeonRow({ chore, rowIndex, t, placeholder, edit }) {
   const O = window.Ornament;
+  const editable = !!edit && !placeholder;
   // 7 rooms + 1 boss-ending circle
   return (
     <div style={dmStyles.row}>
       <div style={{ ...dmStyles.rowName, opacity: placeholder ? 0.4 : 1 }}>
+        {editable && (
+          <InlineRemoveButton
+            onRemove={() => edit.removeChore(rowIndex)}
+            label={`Remove quest ${rowIndex + 1}`}
+          />
+        )}
         <span style={dmStyles.rowNum}>{String(rowIndex + 1).padStart(2, '0')}</span>
-        <span style={dmStyles.rowText}>{chore.name}</span>
-        <span style={dmStyles.rowXp}>+{chore.xp}</span>
+        <span style={dmStyles.rowText}>
+          {editable ? (
+            <EditableText
+              value={chore.name}
+              onChange={(v: string) => edit.setChoreName(rowIndex, v)}
+              ariaLabel={`Quest ${rowIndex + 1} name`}
+            />
+          ) : (
+            chore.name
+          )}
+        </span>
+        <span style={dmStyles.rowXp}>
+          +
+          {editable ? (
+            <EditableNumber
+              value={chore.xp as number}
+              min={1}
+              max={99}
+              onChange={(v: number) => edit.setChoreXp(rowIndex, v)}
+              ariaLabel={`Quest ${rowIndex + 1} XP`}
+            />
+          ) : (
+            chore.xp
+          )}
+        </span>
       </div>
       <div style={dmStyles.rooms}>
         {/* Connector line behind */}
